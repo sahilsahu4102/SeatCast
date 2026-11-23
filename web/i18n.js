@@ -108,37 +108,37 @@ var I18N = {
   },
   hi: {
     'app.city': 'दिल्ली',
-    'skip': 'Skip to journeys', // TODO hi
+    'skip': 'यात्रा विकल्पों पर जाएँ',
     'tab.planner': 'यात्रा खोजें',
     'tab.operator': 'ऑपरेटर',
     'tab.data': 'डेटा और तरीका',
-    'lang.group': 'Language', // TODO hi
+    'lang.group': 'भाषा',
     'from': 'कहाँ से',
     'to': 'कहाँ तक',
     'swap': 'बदलें',
-    'stop.placeholder': 'Type a stop name', // TODO hi
-    'stop.none': 'No stop matches “{q}”', // TODO hi
-    'pick_on_map': 'Pick on map', // TODO hi
-    'pick.hint': 'Click the map near a stop to set {field}', // TODO hi
-    'pick.set': '{field} set to {stop}', // TODO hi
-    'daytype': 'Day', // TODO hi
+    'stop.placeholder': 'स्टॉप का नाम लिखें',
+    'stop.none': '“{q}” से मिलता कोई स्टॉप नहीं',
+    'pick_on_map': 'नक्शे पर चुनें',
+    'pick.hint': '{field} चुनने के लिए नक्शे पर किसी स्टॉप के पास क्लिक करें',
+    'pick.set': '{field} अब {stop} है',
+    'daytype': 'दिन',
     'daytype.weekday': 'कार्यदिवस',
     'daytype.saturday': 'शनिवार',
     'daytype.sunday': 'रविवार या छुट्टी',
     'leave_at': 'निकलने का समय',
     'search': 'खोजें',
-    'edit': 'Edit', // TODO hi
-    'enquiry.label': 'Your search', // TODO hi
-    'pref.label': 'Sort by', // TODO hi
+    'edit': 'खोज बदलें',
+    'enquiry.label': 'आपकी खोज',
+    'pref.label': 'क्रम',
     'pref.fastest': 'सबसे तेज़',
     'pref.comfort': 'सबसे आरामदायक',
-    'col.dep': 'Dep', // TODO hi
-    'col.arr': 'Arr', // TODO hi
-    'col.min': 'Min', // TODO hi
-    'col.chg': 'Chg', // TODO hi
-    'col.avail': 'Availability', // TODO hi
-    'options.label': 'Journey options', // TODO hi
-    'options.count': '{n} options, sorted by {pref}', // TODO hi
+    'col.dep': 'प्रस्थान',
+    'col.arr': 'आगमन',
+    'col.min': 'मिनट',
+    'col.chg': 'बदलाव',
+    'col.avail': 'उपलब्धता',
+    'options.label': 'यात्रा के विकल्प',
+    'options.count': '{n} विकल्प, {pref} के क्रम में',
     'level.MANY_SEATS_AVAILABLE': 'कई सीटें खाली',
     'level.FEW_SEATS_AVAILABLE': 'कुछ सीटें खाली',
     'level.STANDING_ROOM_ONLY': 'खड़े होने की जगह',
@@ -149,67 +149,67 @@ var I18N = {
     'short.STANDING_ROOM_ONLY': 'खड़े होने की जगह',
     'short.CRUSHED_STANDING_ROOM_ONLY': 'बहुत भीड़',
     'short.NO_DATA_AVAILABLE': 'डेटा कम है',
-    'avail.k': 'seats {k}/10', // TODO hi
+    'avail.k': 'सीट {k}/10',
     'seats_k_of_10': '10 में से {k} यात्राओं में सीट मिलती है',
     'crowded_between': '{a} से {b} तक भीड़',
-    'range': 'Usually {a} to {b}', // TODO hi
+    'range': 'आमतौर पर {a} से {b}',
     'confidence.high': 'भरोसा: ज़्यादा',
     'confidence.medium': 'भरोसा: मध्यम',
     'confidence.low': 'भरोसा: कम',
-    'confidence.n': 'from {n} sampled riders', // TODO hi
-    'limited.low_n': 'Too few sampled tickets on this stretch to estimate crowding.', // TODO hi
-    'limited.schedule_gap': 'The timetable shows no bus in this slot, so crowding can’t be estimated.', // TODO hi
-    'limited.generic': 'Not enough ticket data here to estimate crowding.', // TODO hi
+    'confidence.n': '{n} सैंपल यात्रियों से',
+    'limited.low_n': 'इस हिस्से पर भीड़ का अनुमान लगाने के लिए सैंपल टिकट बहुत कम हैं।',
+    'limited.schedule_gap': 'समय-सारणी में इस समय कोई बस नहीं है, इसलिए भीड़ का अनुमान नहीं लग सकता।',
+    'limited.generic': 'यहाँ भीड़ का अनुमान लगाने के लिए टिकट डेटा काफ़ी नहीं है।',
     'leave_later': '{t} बजे निकलें → सीट मिलने की संभावना',
-    'leave_later.more': 'seats on {k} of 10 trips, arrives {m} min later', // TODO hi
+    'leave_later.more': '10 में से {k} यात्राओं में सीट, {m} मिनट देर से पहुँचेंगे',
     'board_upstream': '{m} मिनट चलकर {stop} से चढ़ें → सीट मिलने की संभावना ज़्यादा',
-    'board_upstream.more': 'seats on {k} of 10 trips', // TODO hi
+    'board_upstream.more': '10 में से {k} यात्राओं में सीट',
     'quiet_hour': '{t} बजे यह यात्रा आमतौर पर: {level}',
-    'quiet_hour.more': '{m} min', // TODO hi
+    'quiet_hour.more': '{m} मिनट',
     'changes': '{n} बार बस बदलें',
-    'changes.0': 'Direct', // TODO hi
+    'changes.0': 'सीधी बस',
     'walk_min': 'पैदल {m} मिनट',
-    'walk.to': 'Walk {m} min to {stop}', // TODO hi
-    'walk.dest': 'Walk {m} min to your destination', // TODO hi
-    'walk.transfer': 'Walk {m} min to change at {stop}', // TODO hi
-    'bus.towards': 'towards {h}', // TODO hi
-    'bus.board': 'Board {t} at {stop}', // TODO hi
-    'bus.alight': 'Get off {t} at {stop}', // TODO hi
-    'bus.alight_notime': 'Get off at {stop}', // TODO hi
-    'bus.ride': '{m} min ride', // TODO hi
-    'strip.label': 'Crowding stop by stop: {s}', // TODO hi
-    'strip.calm': 'seats likely all the way', // TODO hi
-    'strip.partial': 'seats likely on the stretches with data; limited data elsewhere', // TODO hi
-    'strip.some_nd': 'limited data elsewhere', // TODO hi
-    'strip.until': 'seats likely until {a}, crowded {a} to {b}', // TODO hi
-    'strip.from': 'crowded {a} to {b}', // TODO hi
-    'strip.none': 'not enough data to show crowding stop by stop', // TODO hi
-    'strip.cell': '{a} → {b} ∙ {level} ∙ {m} min', // TODO hi
-    'on_map': 'Shown on map', // TODO hi
+    'walk.to': '{stop} तक {m} मिनट पैदल',
+    'walk.dest': 'मंज़िल तक {m} मिनट पैदल',
+    'walk.transfer': '{stop} पर बस बदलने के लिए {m} मिनट पैदल',
+    'bus.towards': '{h} की ओर',
+    'bus.board': '{stop} से {t} बजे चढ़ें',
+    'bus.alight': '{stop} पर {t} बजे उतरें',
+    'bus.alight_notime': '{stop} पर उतरें',
+    'bus.ride': '{m} मिनट का सफ़र',
+    'strip.label': 'हर स्टॉप पर भीड़: {s}',
+    'strip.calm': 'पूरे रास्ते सीट मिलने की संभावना',
+    'strip.partial': 'जहाँ डेटा है वहाँ सीट मिलने की संभावना; बाकी जगह डेटा कम है',
+    'strip.some_nd': 'बाकी जगह डेटा कम है',
+    'strip.until': '{a} तक सीट मिलने की संभावना, {a} से {b} तक भीड़',
+    'strip.from': '{a} से {b} तक भीड़',
+    'strip.none': 'हर स्टॉप की भीड़ दिखाने के लिए डेटा काफ़ी नहीं है',
+    'strip.cell': '{a} → {b} ∙ {level} ∙ {m} मिनट',
+    'on_map': 'नक्शे पर दिखाया गया',
     'no_route': '2 घंटे में कोई बस रूट नहीं मिला',
-    'no_route.why': 'No trip in the timetable joins these stops in this window.', // TODO hi
-    'no_route.later': 'Search 1 hour later', // TODO hi
-    'no_route.edit': 'Change stops', // TODO hi
-    'err.same': 'From and To are the same stop. Choose a different destination.', // TODO hi
-    'err.outside': 'That point is outside the bus network. Pick a spot inside Delhi.', // TODO hi
-    'err.need_stop': 'Choose a stop from the list for {field}.', // TODO hi
-    'err.api': 'Couldn’t load journeys. Check your connection and try again.', // TODO hi
-    'err.stops': 'Couldn’t load the stop list. Search will work once it loads.', // TODO hi
-    'err.retry': 'Try again', // TODO hi
-    'loading': 'Finding buses…', // TODO hi
+    'no_route.why': 'इस समय में समय-सारणी की कोई यात्रा इन स्टॉप को नहीं जोड़ती।',
+    'no_route.later': '1 घंटे बाद खोजें',
+    'no_route.edit': 'स्टॉप बदलें',
+    'err.same': '‘कहाँ से’ और ‘कहाँ तक’ एक ही स्टॉप हैं। कोई दूसरी मंज़िल चुनें।',
+    'err.outside': 'यह जगह बस नेटवर्क से बाहर है। दिल्ली के अंदर कोई जगह चुनें।',
+    'err.need_stop': '{field} के लिए सूची से कोई स्टॉप चुनें।',
+    'err.api': 'यात्राएँ लोड नहीं हो सकीं। कनेक्शन जाँचें और फिर कोशिश करें।',
+    'err.stops': 'स्टॉप की सूची लोड नहीं हो सकी। सूची लोड होते ही खोज काम करेगी।',
+    'err.retry': 'फिर कोशिश करें',
+    'loading': 'बसें खोजी जा रही हैं…',
     'data_note': 'अक्टूबर 2026 के ऐप टिकटों से अनुमान, सभी यात्रियों के हिसाब से',
-    'fixture.banner': 'Synthetic sample data. These numbers are made up to test the layout and are not estimates.', // TODO hi
-    'map.label': 'Map of the selected journey', // TODO hi
-    'map.legend': 'Crowding', // TODO hi
-    'map.trip': 'Your trip', // TODO hi
-    'map.walk': 'Walk', // TODO hi
-    'map.expand': 'Expand map', // TODO hi
-    'map.collapse': 'Shrink map', // TODO hi
-    'map.unavailable': 'The map couldn’t load. Every journey detail is in the list.', // TODO hi
-    'operator.title': 'Where one more bus helps most', // TODO hi
-    'operator.shell': 'The segment heatmap by hour and the top 20 route-hours ranked by +1-bus benefit appear here once the operator data is connected.', // TODO hi
-    'data.title': 'Data and method', // TODO hi
-    'data.shell': 'Coverage, the expansion factor and who is missing from the ticket data appear here once /coverage is connected.' // TODO hi
+    'fixture.banner': 'नमूना (कृत्रिम) डेटा। ये संख्याएँ लेआउट जाँचने के लिए बनाई गई हैं, असली अनुमान नहीं हैं।',
+    'map.label': 'चुनी गई यात्रा का नक्शा',
+    'map.legend': 'भीड़',
+    'map.trip': 'आपकी यात्रा',
+    'map.walk': 'पैदल',
+    'map.expand': 'नक्शा बड़ा करें',
+    'map.collapse': 'नक्शा छोटा करें',
+    'map.unavailable': 'नक्शा लोड नहीं हो सका। यात्रा की हर जानकारी सूची में है।',
+    'operator.title': 'एक और बस सबसे ज़्यादा कहाँ मदद करेगी',
+    'operator.shell': 'घंटे के हिसाब से हिस्सों का हीटमैप और +1 बस के फ़ायदे के क्रम में 20 सबसे ज़रूरी रूट-घंटे, ऑपरेटर डेटा जुड़ते ही यहाँ दिखेंगे।',
+    'data.title': 'डेटा और तरीका',
+    'data.shell': 'कवरेज, विस्तार गुणक और टिकट डेटा में कौन शामिल नहीं है, यह /coverage जुड़ते ही यहाँ दिखेगा।'
   }
 };
 
