@@ -6,6 +6,7 @@
 <title>SeatCast Delhi</title>
 <meta name="description" content="How crowded Delhi buses usually are, shown next to every journey option. Estimated from October 2026 app tickets.">
 <meta name="theme-color" content="#ffd400">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23ffd400'/%3E%3Cpath d='M5.5 3v10M5.5 9.5h5v3.5' stroke='%231b1c1e' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Devanagari:wdth,wght@75..100,400..700&display=swap">
@@ -85,7 +86,7 @@
           </div>
           <div class="field">
             <label for="time" data-i18n="leave_at">Leave at</label>
-            <input id="time" type="time" step="300" value="18:00" required>
+            <input id="time" type="time" step="300" value="18:00" required aria-describedby="form-msg">
           </div>
           <button class="go" type="submit" data-i18n="search">Search</button>
         </div>
@@ -111,22 +112,54 @@
       <p class="note" data-i18n="data_note"></p>
     </div>
 
-    <div class="mapwrap" id="mapwrap">
+    <div class="mapslot" id="plan-mapslot"><div class="mapwrap" id="mapwrap">
       <div class="map" id="map" role="region" data-i18n-aria="map.label" aria-label="Map of the selected journey"></div>
       <div class="legend" id="legend"></div>
       <button type="button" class="map-size" id="map-size" aria-controls="mapwrap" aria-expanded="false"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg><span></span></button>
       <p class="map-msg" id="map-msg" hidden></p>
+    </div></div>
+  </section>
+
+  <section class="ops" id="panel-operator" role="tabpanel" aria-labelledby="tab-operator" hidden>
+    <div class="ops-side">
+      <div class="ops-ctl">
+        <h1 class="title" data-i18n="op.title"></h1>
+        <p class="lede" data-i18n="op.lede"></p>
+        <div class="ctl-row">
+          <div class="field">
+            <label for="op-day" data-i18n="daytype">Day</label>
+            <select id="op-day">
+              <option value="weekday" data-i18n="daytype.weekday">Weekday</option>
+              <option value="saturday" data-i18n="daytype.saturday">Saturday</option>
+              <option value="sunday" data-i18n="daytype.sunday">Sunday or holiday</option>
+            </select>
+          </div>
+          <div class="field hour">
+            <label for="op-hour"><span data-i18n="op.hour">Hour</span> <output id="op-hour-out" for="op-hour" class="tnum"></output></label>
+            <input id="op-hour" type="range" min="5" max="23" step="1" value="18">
+          </div>
+        </div>
+        <p class="op-status" id="op-map-status" role="status" aria-live="polite"></p>
+      </div>
+      <div class="ops-body">
+        <h2 class="title2" data-i18n="op.top"></h2>
+        <fieldset class="pref period" id="op-period">
+          <legend class="sr-only" data-i18n="op.period">Period</legend>
+          <label><input type="radio" name="op-period" value="am"><span data-i18n="op.am">Morning peak</span></label>
+          <label><input type="radio" name="op-period" value="pm"><span data-i18n="op.pm">Evening peak</span></label>
+          <label><input type="radio" name="op-period" value="all" checked><span data-i18n="op.all">All day</span></label>
+        </fieldset>
+        <p class="hint" data-i18n="op.table_hint"></p>
+        <div id="op-table"></div>
+        <div id="op-profile" class="profile" tabindex="-1"></div>
+      </div>
     </div>
+    <div class="mapslot" id="op-mapslot"></div>
   </section>
 
-  <section class="shell" id="panel-operator" role="tabpanel" aria-labelledby="tab-operator" hidden>
-    <h1 class="title" data-i18n="operator.title"></h1>
-    <p data-i18n="operator.shell"></p>
-  </section>
-
-  <section class="shell" id="panel-data" role="tabpanel" aria-labelledby="tab-data" hidden>
+  <section class="shell datatab" id="panel-data" role="tabpanel" aria-labelledby="tab-data" hidden>
     <h1 class="title" data-i18n="data.title"></h1>
-    <p data-i18n="data.shell"></p>
+    <div id="data-body"></div>
   </section>
 </main>
 
