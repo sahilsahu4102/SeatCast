@@ -14,3 +14,7 @@ def test_norm(s, e):
 
 def test_same():
     assert norm('Ito-Agcr') == norm('Ito Agcr')
+
+
+def test_govt():
+    assert norm('Govt. Press') == norm('Government Press') == 'government press'

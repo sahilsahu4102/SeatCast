@@ -13,7 +13,7 @@ ABBR = [(r'\bx[- ]?ing\b', 'crossing'), (r'\bxing\b', 'crossing'), (r'\(t\)', ' 
         (r'\bextn?\b', 'extension'), (r'\bopp\b', 'opposite'), (r'\bmore\b', 'mor'),
         (r'\bbdr\b', 'border'), (r'\bpkt\b', 'pocket'), (r'\b(?:apt|aptt|apts)\b', 'apartment'),
         (r'\brd\b', 'road'), (r'\bnr\b', 'near'), (r'\bhosp\b', 'hospital'),
-        (r'\bjn\b', 'junction'), (r'\bph\b', 'phase')]
+        (r'\bjn\b', 'junction'), (r'\bph\b', 'phase'), (r'\bgovt\b', 'government')]
 
 STD = {True: {9, 13.5, 18, 22.5}, False: {4.5, 9, 13.5}}
 FULL = {True: {10, 15, 20, 25}, False: {5, 10, 15}}
