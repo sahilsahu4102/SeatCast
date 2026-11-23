@@ -41,3 +41,4 @@ match_superset: true   # ASSUMPTION: accept a subset-guarded stop name when exac
 impute_min_n: 5                                  # ASSUMPTION: placed passengers needed at an imputation level before falling back (P3)
 periods: {am: [7, 10], pm: [17, 20]}             # operator peak windows, hours [start, end) (P3, gate G3)
 slot_window: 1                                   # ASSUMPTION: a cell's load pools flows and scheduled buses over slots b-1..b+1 (90 min), so sparse timetables don't leave false gaps (P3)
+calib: {crush_factor: 1.5, quantile: 0.95, iters: 5}   # ASSUMPTION: no bus carries more than 1.5 x its rated total. A route whose 95th-percentile load exceeds that gets a lower E (a higher app share there); other routes are renormalised so total riders stay at ridership_daily (P3)
