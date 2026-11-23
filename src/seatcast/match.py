@@ -105,8 +105,13 @@ def score(qs, cs, mc):
     dq, dc = [nums(x) for x in qs], [nums(x) for x in cs]
     tq, tc = [set(x.split()) for x in qs], [set(x.split()) for x in cs]
     qs, cs = [strip(x) for x in qs], [strip(x) for x in cs]
-    a = process.cdist(qs, cs, scorer=fuzz.token_set_ratio, dtype=np.float64)
-    s = process.cdist(qs, cs, scorer=fuzz.token_sort_ratio, dtype=np.float64)
+    a = process.cdist(qs, cs, scorer=fuzz.token_set_ratio, dtype=np.float64, workers=-1)
+    s = process.cdist(qs, cs, scorer=fuzz.token_sort_ratio, dtype=np.float64, workers=-1)
+    d = np.zeros(a.shape)
+    if mc.get('despace', True):  # "shadi pur" = "shadipur": compare spellings without spaces too
+        d = process.cdist([x.replace(' ', '') for x in qs], [x.replace(' ', '') for x in cs],
+                          scorer=fuzz.ratio, dtype=np.float64, workers=-1)
+        a = np.maximum(a, d)
     u = {k: i for i, k in enumerate(set(dq) | set(dc))}
     iq, ic = np.array([u[x] for x in dq])[:, None], np.array([u[x] for x in dc])[None, :]
     eq = np.array([bool(x) for x in dq])[:, None] & np.array([bool(x) for x in dc])[None, :]
@@ -118,7 +123,7 @@ def score(qs, cs, mc):
     nq = np.array([len(x.split()) for x in qs])[:, None]
     nc = np.array([len(x.split()) for x in cs])[None, :]
     v = a.copy()
-    a[(np.minimum(nq, nc) <= 2) & (s < 80)] = 0
+    a[(np.minimum(nq, nc) <= 2) & (s < 80) & (d < mc['accept'])] = 0
     # sub: one name's full tokens all appear in the other's, sharing a non-generic token (rung e)
     g = set(cfg().get('match_generic', []))
     sub = np.zeros(a.shape)
@@ -228,6 +233,70 @@ def match_names(q, cand, alias, mc):
     return nm
 
 
+def city(names, raw, s, mc, n=400):
+    # every GTFS stop name, city-wide, that a ticket name matches: all >= accept, or the margin winner
+    g = s.drop_duplicates('gtfs_n')
+    cn = g['gtfs_n'].tolist()
+    cs, ci = strings(cn, g['stop_name'])
+    out = []
+    for i in range(0, len(names), n):
+        qn = list(names[i:i + n])
+        qs, qi = strings(qn, [raw.get(x) for x in qn])
+        a, v, _ = score(qs, cs, mc)
+        m, w = collapse(a, qi, len(qn), ci, len(cn)), collapse(v, qi, len(qn), ci, len(cn))
+        i1, _, _, _, ok = decide(m, w, mc)
+        keep = m >= mc['accept']
+        keep[np.flatnonzero(ok), i1[ok]] = True
+        ii, jj = np.nonzero(keep)
+        out.append(pd.DataFrame({'name_n': np.array(qn)[ii], 'city_n': np.array(cn)[jj], 'city_score': m[ii, jj]}))
+    return pd.concat(out, ignore_index=True)
+
+
+def geo(nm, raw, s, canon, mc):
+    # rung f: a name still unmatched on its route, found anywhere in the city, snaps to the nearest stop of
+    # the route's canonical pattern within match_geo_m. Rejected when its snaps are more than one stop apart.
+    # ponytail: canonical pattern only; stops served only by variant patterns get no rung f
+    miss = nm[nm['rung'].isna()]
+    if miss.empty or not mc.get('geo'):
+        return nm
+    loc = city(miss['name_n'].unique(), raw, s, mc).merge(
+        s[['gtfs_n', 'stop_lat', 'stop_lon']].rename(columns={'gtfs_n': 'city_n'}), on='city_n')
+    cr = dict(tuple(canon.groupby('route_id')))
+    out = []
+    for r, d in miss[['route_id', 'name_n']].merge(loc, on='name_n').groupby('route_id'):
+        c = cr.get(r)
+        if c is None:
+            continue
+        h = gtfs.hav(d['stop_lat'].to_numpy()[:, None], d['stop_lon'].to_numpy()[:, None],
+                     c['lat'].to_numpy()[None, :], c['lon'].to_numpy()[None, :])
+        j = h.argmin(axis=1)
+        d = d.assign(k=c['k'].to_numpy()[j], to=c['gtfs_n'].to_numpy()[j], geo_m=h[np.arange(len(d)), j])
+        d = d[d['geo_m'] <= mc['geo']]
+        span = d.groupby('name_n')['k'].agg(lambda k: k.max() - k.min())
+        d = d[d['name_n'].isin(span.index[span <= 1])].sort_values(['geo_m', 'city_score'], ascending=[True, False])
+        out.append(d.drop_duplicates('name_n'))
+    if not out:
+        return nm
+    f = pd.concat(out, ignore_index=True).set_index(['route_id', 'name_n'])
+    nm = nm.set_index(['route_id', 'name_n'])
+    i = nm.index.intersection(f.index)
+    nm.loc[i, 'rung'], nm.loc[i, 'gtfs_n'] = 'f', f.loc[i, 'to']
+    nm.loc[i, 'cand'], nm.loc[i, 'score'] = f.loc[i, 'city_n'], f.loc[i, 'city_score'].round(1)
+    nm.loc[i, 'geo_m'] = f.loc[i, 'geo_m'].round(0)
+    return nm.reset_index()
+
+
+def partial(x, pos):
+    # route matched and exactly one end matched: the canonical-most pattern holding the known stop
+    # (first position for a known board, last for a known alight, leaving the most room for the other end)
+    one = x[x['route_id'].notna() & (x['gb'].notna() ^ x['ga'].notna())]
+    one = one.assign(end=np.where(one['gb'].notna(), 'b', 'a'), gtfs_n=one['gb'].fillna(one['ga']))
+    y = one[ODK + ['route_id', 'gtfs_n', 'end']].merge(pos, on=['route_id', 'gtfs_n'])
+    y = y.assign(o=np.where(y['end'] == 'b', y['k'], -y['k']))
+    y = y.sort_values(['n_trips', 'pattern_id', 'o'], ascending=[False, True, True], kind='stable')
+    return y.drop_duplicates(ODK)[ODK + ['route_id', 'pattern_id', 'k', 'end']]
+
+
 # ---------- order ----------
 
 def order(od, nm, pos):
@@ -252,7 +321,8 @@ def order(od, nm, pos):
 
 def build(od, g, pat, ps, alias=None, rmap=None, mc=None):
     # od: route_raw, base, dir, ss, es, ss_n, es_n, p (passengers), one row per distinct OD
-    mc = {**cfg()['match'], 'rest': cfg()['match_rest'], 'superset': cfg()['match_superset'], **(mc or {})}
+    mc = {**cfg()['match'], 'rest': cfg()['match_rest'], 'superset': cfg()['match_superset'],
+          'geo': cfg()['match_geo_m'], **(mc or {})}
     rmap = rmap or {}
     r = groutes(g, pat)
     c = od[['route_raw', 'base', 'dir']].drop_duplicates('route_raw')
@@ -276,6 +346,11 @@ def build(od, g, pat, ps, alias=None, rmap=None, mc=None):
     q = q.groupby(['route_id', 'name_n'], sort=False).agg(raw=('raw', 'first'), p=('p', 'sum')).reset_index()
     al = alias if alias is not None else pd.DataFrame(columns=['route_id', 'name_n', 'gtfs_n'])
     nm = match_names(q, cand, al, mc)
+    sx = g['stops'][['stop_id', 'stop_name', 'stop_lat', 'stop_lon']].merge(s[['stop_id', 'gtfs_n']], on='stop_id')
+    canon = ps.merge(pat.loc[pat['canonical'], ['pattern_id', 'route_id']], on='pattern_id')
+    canon = canon.merge(s[['stop_id', 'gtfs_n']], on='stop_id')
+    raw = q.drop_duplicates('name_n').set_index('name_n')['raw'].to_dict()
+    nm = geo(nm.assign(geo_m=np.nan), raw, sx, canon, mc)
 
     x0 = order(od, nm, pos)
     x1 = order(od.drop(columns='route_id').rename(columns={'opp_id': 'route_id'}).assign(opp_id=od['route_id']), nm, pos)
@@ -285,7 +360,8 @@ def build(od, g, pat, ps, alias=None, rmap=None, mc=None):
     x['swapped'] = x['swapped'].fillna(False).astype(bool) if 'swapped' in x else False
     # what a per-ticket retry on the opposite direction would add (reported, not applied)
     y = x[x['status'] == 'order'][ODK].merge(x1[x1['status'] == 'ok'][ODK + ['p']], on=ODK)
-    return {'od': x, 'routes': rm, 'names': nm, 'swaps': sw, 'flip_p': float(y['p'].sum()), 'r': r}
+    return {'od': x, 'routes': rm, 'names': nm, 'swaps': sw, 'flip_p': float(y['p'].sum()), 'r': r,
+            'partial': partial(x, pos)}
 
 
 def swaps(x0, x1):
@@ -340,6 +416,11 @@ def run():
         t.daytype, t.week, t.ac, t.series, t.fare_pp, t.fare_class, x.rung_route::int rung_route, x.rung_b, x.rung_a
         from t join x using (route_raw, ss_n, es_n) where x.status = 'ok' order by t.tid)
         to '{(WORK / 'od.parquet').as_posix()}' (format parquet)""")
+    c.register('y', res['partial'])
+    c.execute(f"""copy (select t.tid, y.route_id, y.pattern_id, y.k::int k, y.end, t.pc, t.ts, t.slot, t.date,
+        t.daytype, t.week, t.ac, t.series, t.fare_pp, t.fare_class
+        from t join y using (route_raw, ss_n, es_n) order by t.tid)
+        to '{(WORK / 'od_partial.parquet').as_posix()}' (format parquet)""")
     write(res, c, ps)
     print(f'match: {time.time() - t0:.0f}s')
 
@@ -349,7 +430,7 @@ def write(res, c, ps):
     sn = dict(zip(r['route_id'], r['route_short_name']))
     ok = nm[nm['rung'].notna()].assign(route=lambda d: d['route_id'].map(sn))
     ok = ok[ok['p'] > 0]
-    ok[['route', 'route_id', 'name_n', 'gtfs_n', 'rung', 'score', 'runner', 'runner_score', 'p']].sort_values(
+    ok[['route', 'route_id', 'name_n', 'gtfs_n', 'rung', 'score', 'runner', 'runner_score', 'geo_m', 'p']].sort_values(
         'p', ascending=False).to_csv(WORK / 'stop_match.csv', index=False)
     ur = x[x['status'] == 'route'].groupby('route_raw').agg(base=('base', 'first'), dir=('dir', 'first'),
                                                             p=('p', 'sum'), n=('n', 'sum')).reset_index()
@@ -423,13 +504,45 @@ def cov(res, c, ps):
         'top100_routes': {'pax_share_pct': share(tx['p'].sum(), P),
                           'usable_pct': share(tx.loc[tx['status'] == 'ok', 'p'].sum(), tx['p'].sum())},
         'fare_slab': fare(c, ps),
+        'out_of_order_pct_by_rung': disorder(x),
+        'rung_f_geo_m': geo_q(res['names']),
+        'outputs': outputs(c, ps),
     }
     f = OUT / 'coverage.json'
     OUT.mkdir(parents=True, exist_ok=True)
     d = json.loads(f.read_text(encoding='utf-8')) if f.exists() else {}
     d['match'] = mt
     f.write_text(json.dumps(d, indent=2), encoding='utf-8')
-    print(json.dumps({k: v for k, v in mt.items() if k not in ('direction_swaps', 'fare_slab')}, indent=1))
+    print(json.dumps({k: v for k, v in mt.items() if k not in ('direction_swaps', 'fare_slab', 'outputs')}, indent=1))
+
+
+def disorder(x):
+    # out-of-order share of both-matched passengers with an end on each stop rung: the matching error signal
+    o = x[x['status'].isin(['ok', 'order'])]
+    out = {}
+    for r in sorted(set(o['rung_b'].dropna()) | set(o['rung_a'].dropna())):
+        k = o[(o['rung_b'] == r) | (o['rung_a'] == r)]
+        out[r] = share(k.loc[k['status'] == 'order', 'p'].sum(), k['p'].sum())
+    return out
+
+
+def geo_q(nm):
+    # rung f snap distance, weighted by passenger-ends
+    f = nm[(nm['rung'] == 'f') & (nm['p'] > 0)].sort_values('geo_m')
+    if f.empty:
+        return {}
+    w = f['p'].cumsum() / f['p'].sum()
+    q = {f'p{int(t * 100)}': float(f['geo_m'].iloc[int(np.searchsorted(w, t))]) for t in (0.1, 0.5, 0.9)}
+    return {**q, 'max': float(f['geo_m'].max()), 'pax_ends': int(f['p'].sum()), 'pairs': len(f)}
+
+
+def outputs(c, ps):
+    c.register('pm', ps.groupby('pattern_id')['k'].max().rename('mk').reset_index())
+    o = c.execute(f"select count(*), sum(pc) from '{(WORK / 'od.parquet').as_posix()}'").fetchone()
+    p = c.execute(f"""select count(*), sum(pc), sum(pc) filter (where (y.end = 'b' and y.k = pm.mk) or (y.end = 'a' and y.k = 0))
+        from '{(WORK / 'od_partial.parquet').as_posix()}' y join pm using (pattern_id)""").fetchone()
+    return {'od_rows': o[0], 'od_pax': int(o[1]), 'od_partial_rows': p[0], 'od_partial_pax': int(p[1]),
+            'od_partial_pax_known_end_at_pattern_end': int(p[2] or 0)}
 
 
 def fare(c, ps):

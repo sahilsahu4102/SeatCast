@@ -51,10 +51,11 @@ def test_stop_rungs(feed):
 
 
 def test_guards():
-    s = lambda q, c: match.score([q], [c], {'maybe': 75, 'rest': 70})[0][0, 0]
+    s = lambda q, c: match.score([q], [c], {'accept': 88, 'maybe': 75, 'rest': 70})[0][0, 0]
     assert s('s j terminal', 'munirka village terminal') < 75            # generic word alone is no match
     assert s('hamdard nagar sangam vihar', 'ambedkar nagar') < 75        # unshared words too different
     assert s('hauz rani', 'hauj rani') >= 88
+    assert s('shadi pur depot', 'shadipur depot') >= 88                 # despaced spelling, not a subset
 
 
 def test_duplicate_name_index(feed):
@@ -94,3 +95,29 @@ def test_alias_variants():
     assert nm.loc['r1', 'gtfs_n'] == 'safdurjung hospital aiims'
     assert nm.loc['r2', 'gtfs_n'] == 'aiims safdurjung hospital'
     assert (nm['rung'] == 'b').all()
+
+
+def test_geo_rung(feed):
+    # names absent from the route, found elsewhere in the city: snap within match_geo_m, else reject
+    res = match.build(ods('10UP', [('Safdarjung Hospital', 'Uttam Nagar East'), ('Kashmere Gate ISBT', 'Sector 5'),
+                                   ('Kashmere Gate ISBT', 'Kalkaji')]), *feed, mc={'geo': 300})
+    nm = res['names'].query("route_id == 'R1'").set_index('name_n')
+    assert nm.at['safdarjung hospital', 'rung'] == 'f'
+    assert nm.at['safdarjung hospital', 'gtfs_n'] == 'rohini sector 22'
+    assert 100 < nm.at['safdarjung hospital', 'geo_m'] < 120
+    assert pd.isna(nm.at['sector 5', 'rung'])                           # two "Sector 5" stops snap 4 stops apart
+    assert pd.isna(nm.at['kalkaji', 'rung'])                            # 2.2 km from the route
+    assert nm.at['kashmere gate isbt', 'rung'] == 'a'                   # already matched: untouched
+    r = row(res, 'Safdarjung Hospital', 'Uttam Nagar East')
+    assert (r['status'], r['b'], r['a']) == ('ok', 2, 3)
+    off = match.build(ods('10UP', [('Safdarjung Hospital', 'Uttam Nagar East')]), *feed, mc={'geo': None})
+    assert off['od']['status'].tolist() == ['stops']
+
+
+def test_partial(feed):
+    res = match.build(ods('10UP', [('Kashmere Gate ISBT', 'Kalkaji'), ('Kalkaji', 'Mandi House'),
+                                   ('Kashmere Gate ISBT', 'Uttam Nagar East')]), *feed)
+    p = res['partial'].set_index(['ss_n', 'es_n'])
+    assert len(p) == 2
+    assert tuple(p.loc[('kashmere gate isbt', 'kalkaji'), ['pattern_id', 'k', 'end']]) == ('R1:0', 0, 'b')
+    assert tuple(p.loc[('kalkaji', 'mandi house'), ['pattern_id', 'k', 'end']]) == ('R1:0', 5, 'a')  # last Mandi House

@@ -5,3 +5,7 @@ S3,A3,Rohini Sec 22,28.6450,77.2320
 S4,A4,Uttam Nagar East,28.6340,77.2340
 S5,A5,Uttam Nagar West,28.6230,77.2360
 S6,A6,Mandi House,28.6120,77.2380
+S7,A7,Safdarjung Hospital,28.6460,77.2320
+S8,A8,Sector 5,28.6680,77.2280
+S9,A9,Sector 5,28.6240,77.2360
+S10,A10,Kalkaji,28.6450,77.2550

@@ -14,7 +14,7 @@ CSV = RAW / 'tickets' / 'October-Delhi.csv'
 TIX = WORK / 'tickets.parquet'
 PAT, PS, NET = WORK / 'patterns.parquet', WORK / 'pattern_stops.parquet', WORK / 'network.npz'
 FEED = RAW / 'gtfs' / 'stops.txt'
-OD, COV = WORK / 'od.parquet', OUT / 'coverage.json'
+OD, COV, PART = WORK / 'od.parquet', OUT / 'coverage.json', WORK / 'od_partial.parquet'
 PLATE = re.compile(r'DL ?\d{1,2} ?[A-Z]{1,3} ?\d{4}')
 
 
@@ -110,8 +110,18 @@ def test_od_agrees_with_tickets(t):
 @need(COV)
 def test_match_rates():
     m = json.loads(COV.read_text(encoding='utf-8'))['match']
-    # regression floors; the G2 targets (90 / 85 / 95) are in docs/IMPLEMENTATION_PLAN.md §5
-    assert m['route_matched_pct'] >= 95 and m['both_stops_pct_of_routed'] >= 80 and m['in_order_pct_of_both'] >= 99
+    # regression floors under today's 98.35 / 93.14 / 99.78; the G2 targets (90 / 85 / 95) are in IMPLEMENTATION_PLAN §5
+    assert m['route_matched_pct'] >= 95 and m['both_stops_pct_of_routed'] >= 90 and m['in_order_pct_of_both'] >= 99
+
+
+@need(PART, OD, PS)
+def test_od_partial():
+    p, ps = pd.read_parquet(PART), pd.read_parquet(PS)
+    n = ps.groupby('pattern_id').size()
+    assert not {'v', 'vehicle', 'vehicle_number'} & set(p.columns)
+    assert set(p['end']) <= {'b', 'a'} and p['tid'].is_unique
+    assert ((p['k'] >= 0) & (p['k'] < p['pattern_id'].map(n))).all()
+    assert not p['tid'].isin(pd.read_parquet(OD, columns=['tid'])['tid']).any()  # never counted twice
 
 
 # Every step: nothing vehicle-level in public outputs (CLAUDE.md §2 rule 5)
