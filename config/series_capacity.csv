@@ -1,0 +1,5 @@
+series,seats,total,note
+DL51EV,39,63,VERIFY assumed 12 m e-bus
+DL51GD,39,63,VERIFY could be 9 m DEVi (23/36)
+DL1PE,39,63,VERIFY
+DL1PD,37,60,VERIFY mixed AC/non-AC fleet; placeholder
