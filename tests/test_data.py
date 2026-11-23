@@ -8,7 +8,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 import pytest
 
-from seatcast import OUT, RAW, WORK, cfg
+from seatcast import OUT, RAW, ROOT, WORK, cfg
 
 CSV = RAW / 'tickets' / 'October-Delhi.csv'
 TIX = WORK / 'tickets.parquet'
@@ -179,3 +179,8 @@ def test_operator():
     o = pd.read_parquet(OPER)
     assert (o['gap'] >= 0).all() and (o['plus1_benefit'] >= -1e-6).all() and (o['F_req'] >= 0).all()
     assert np.allclose(o['gap'], (o['F_req'] - o['F_sched']).clip(lower=0))
+
+
+@need(ROOT / 'docs' / 'TECH_NOTE.md')
+def test_note_filled():
+    assert '{{' not in (ROOT / 'docs' / 'TECH_NOTE.md').read_text(encoding='utf-8')

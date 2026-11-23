@@ -1,12 +1,13 @@
 import json
 import math
+import re
 import subprocess
 import time
 
 import duckdb
 import pandas as pd
 
-from seatcast import OUT, RAW, WORK, cfg, gtfs
+from seatcast import OUT, RAW, ROOT, WORK, cfg, gtfs
 
 Z7 = r'C:\Program Files\7-Zip\7z.exe'
 ARC = RAW / 'gps' / 'delhi-dtc-bus-gtfs-rt-2026-10.7z'
@@ -517,3 +518,58 @@ def gps():
     (OUT / 'gps_checks.json').write_text(json.dumps(r, indent=1, default=float), encoding='utf-8')
     print(json.dumps({x: y for x, y in r.items() if x not in ('overlap', 'cross_check_trip_count', 'cross_check_stop_pass')}, indent=1, default=float)[:7000])
     return r
+
+
+# ---------- technical note: every number comes from the outputs ----------
+
+TOK = re.compile(r'\{\{\s*([\w.]+)\s*(?::([^}]*))?\}\}')
+
+
+def dig(d, path):
+    for k in path.split('.'):
+        d = d[int(k)] if isinstance(d, list) else d[k]
+    return d
+
+
+def fill(src, v):
+    return TOK.sub(lambda m: format(dig(v, m[1]), (m[2] or '').strip()), src)  # a missing key raises
+
+
+def table(rows, cols, fmt=None):
+    fmt = fmt or {}
+    out = ['| ' + ' | '.join(h for h, _ in cols) + ' |', '|' + '---|' * len(cols)]
+    for r in rows:
+        out.append('| ' + ' | '.join(format(r[k], fmt.get(k, '')) for _, k in cols) + ' |')
+    return '\n'.join(out)
+
+
+def derived(cov, gps):
+    t = pd.read_parquet(WORK / 'tickets.parquet', columns=['pc', 'fare_class', 'f_zero'])
+    L = cov['load']
+    rung = gps['boarding']['by_rung_board']
+    slab = cov['match']['fare_slab']['km_by_slab']
+    return {
+        'tickets': len(t), 'std_pct': 100 * t.loc[t['fare_class'] == 'std', 'pc'].sum() / t['pc'].sum(),
+        'zero_fare': int(t['f_zero'].sum()),
+        'app_share_pct': 100 * L['D_daily'] / L['ridership_daily']['central'],
+        'bus_km_ratio': L['service']['weekday_bus_km'] / L['service']['weekday_bus_km_sched'],
+        'rung_table': table([{'rung': k, **v} for k, v in rung.items()],
+                            [('stop-match rule', 'rung'), ('tickets', 'n'), ('median m', 'median_m'),
+                             ('within 500 m', 'within_500m')], {'n': ',', 'median_m': '.0f', 'within_500m': '.0%'}),
+        'calib_table': table(L['calib_analysis'],
+                             [('quantile', 'quantile'), ('crush x total', 'crush'), ('routes over cap', 'routes_over_cap'),
+                              ('their riders %', 'routes_over_cap_pax_pct'), ('carried if cut %', 'carried_cut_only_pct'),
+                              ('max carried at cap %', 'max_carried_pct')]),
+        'slab_table': table(slab, [('AC', 'ac'), ('fare per passenger (Rs)', 'fare_pp'), ('passengers', 'pax'),
+                                   ('km p10', 'km_p10'), ('km p50', 'km_p50'), ('km p90', 'km_p90')], {'pax': ','}),
+    }
+
+
+def note():
+    cov = json.loads((OUT / 'coverage.json').read_text(encoding='utf-8'))
+    gps = json.loads((OUT / 'gps_checks.json').read_text(encoding='utf-8'))
+    v = {'cov': cov, 'gps': gps, 'cfg': cfg(), 'x': derived(cov, gps)}
+    src = (ROOT / 'docs' / 'TECH_NOTE.tmpl.md').read_text(encoding='utf-8')
+    out = fill(src, v)
+    (ROOT / 'docs' / 'TECH_NOTE.md').write_text(out, encoding='utf-8')
+    print('note: docs/TECH_NOTE.md written')
