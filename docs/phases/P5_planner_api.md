@@ -51,7 +51,7 @@
 4. **`api.py`** (FastAPI; CLAUDE.md §8 endpoints; serves `web/` at `/`)
    - Startup (lifespan) loads `network.npz`, `cells.parquet` and `operator.parquet` once.
    - **Input validation at the boundary:**
-     - `from`/`to` are `lat,lng` inside the Delhi NCR box (lat 28.2–29.0, lon 76.7–77.6) or a known `stop_id`.
+     - `from`/`to` are `lat,lng` inside the GTFS stops' bounding box plus 5 km (the full feed reaches lat 29.69 and lon 76.60 on intercity routes such as Karnal), or a known `stop_id`.
      - `depart` is `YYYY-MM-DDTHH:MM`; `daytype` and `pref` are enums; `q` is ≤ 64 characters; `hour` is 0–23.
      - Anything else gets a 422 with a plain message.
    - `GZipMiddleware` (for `/stops/all`, ~10.5k stops).
