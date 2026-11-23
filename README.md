@@ -4,6 +4,8 @@
 
 Built for the **Delhi Transport Stack Hackathon 2026, Problem 2** (crowdedness-aware journey planner).
 
+![Planner: Anand Vihar ISBT to Connaught Place at 18:00 on a weekday. Seat likely at boarding, then crowded from Hasanpur Depot into CP; the strip shows crowding stop by stop](docs/img/screen-planner.png)
+
 ## What's inside
 
 - **A rerunnable pipeline** from one month of e-tickets to crowding estimates by route, direction, stretch, 30-minute slot and day type (weekday, Saturday, Sunday or holiday).
@@ -11,6 +13,12 @@ Built for the **Delhi Transport Stack Hackathon 2026, Problem 2** (crowdedness-a
 - **An operator view:** a segment heatmap by hour and a "+1 bus" ranking of route-hours by standee-minutes saved.
 - **Ground truth from GPS:** where each bus was when tickets were bought, and how many trips actually ran.
 - **One bilingual page** (English / हिन्दी) and an OpenAPI at `/docs`.
+
+## Screens
+
+| Operators: where one more bus helps most | Data and method: coverage and GPS checks |
+|---|---|
+| ![Operator tab: segment heatmap by hour and the top route-hours ranked by +1-bus benefit](docs/img/screen-operator.png) | ![Data tab: what the data is, who is missing, match rates and the GPS ground truth](docs/img/screen-data.png) |
 
 ## Quick start
 
@@ -33,12 +41,12 @@ Place the data. It is not in the repo: it is licensed for the hackathon, and `da
 Build everything and serve:
 
 ```bash
-python -m seatcast.run all        # day0 → ingest → match → flows → load → checks
-python -m seatcast.run gps        # optional: GPS ground truth and observed service
+python -m seatcast.run all        # day0 → ingest → match → flows → load → checks → note (about 5 min)
+python -m seatcast.run gps        # optional, needs the 16 GB archive: rebuilds the GPS checks and delivery ratios
 python -m seatcast.run serve      # http://127.0.0.1:8000  (API docs at /docs)
 ```
 
-On Unix, `make all && make serve` does the same. Each step also runs on its own, for example `python -m seatcast.run match`.
+Without the GPS archive, `run all` uses the shipped GPS aggregates in `config/` (bus delivery ratios and check summaries, no vehicle data) and reproduces the published numbers. On Unix, `make all && make serve` does the same. Each step also runs on its own, for example `python -m seatcast.run match`.
 
 Try these:
 - the page opens on **Anand Vihar ISBT → Connaught Place, 18:00 weekday** (the judges' example)
@@ -73,6 +81,8 @@ More detail:
 - [docs/PROPOSAL.md](docs/PROPOSAL.md): the proposal.
 - [docs/THINKING.md](docs/THINKING.md): decisions and evidence.
 - [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) and [docs/phases/](docs/phases/): the build plan.
+- [docs/TECH_NOTE.md](docs/TECH_NOTE.md): the technical note, every number generated from the outputs.
+- [docs/CHECKS.md](docs/CHECKS.md): validation report with charts.
 - [docs/DAY0.md](docs/DAY0.md): what the ticket file contains.
 
 ## Repository layout
