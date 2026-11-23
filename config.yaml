@@ -31,6 +31,9 @@ gps:                                             # P4b ground truth (D-05)
   alias_n: 20                                    # ... from at least this many tickets
   alias_top: 30                                  # unmatched names examined
   board_m: [300, 500]                            # distance bands reported
+  bands: [0, 7, 10, 17, 20, 24]                  # hour bands for observed / scheduled delivery ratios
+  shrink_trips: 10                               # ASSUMPTION: ratio = (obs + 10) / (sched + 10) trips over the days pooled, so thin route-bands stay near 1
+service_from_gps: true                           # scale scheduled buses N by the GPS delivery ratio of route, day type and hour band (P3 + P4b)
 match_geo_m: 300                                 # ASSUMPTION: a name found city-wide may snap to a route stop this close (P2 rung f)
 match_generic: [terminal, crossing, metro, station, depot, stand, chowk, mor, bus, stop, near, opposite]   # ASSUMPTION: descriptor words ignored when fuzzy-scoring stop names (P2)
 match_rest: 70     # ASSUMPTION: fuzzy stop match also needs the unshared tokens to be this similar (max of ratio, partial_ratio); tuned on audited top-50 pairs (P2)
