@@ -298,8 +298,11 @@ def pick(opts, pref, n=3):
     for o in [rank(opts, 'fastest')[0], rank(opts, 'comfort')[0]] + s:
         if len(out) < n and o['_seq'] not in {x['_seq'] for x in out}:
             out.append(o)
-    for o in s:  # fill with the same routes at another departure
-        if len(out) < n and all(o['_seq'] != x['_seq'] or abs(o['_dep'] - x['_dep']) >= 600 for x in out):
+    for o in s:  # fill with the same routes at another departure, only if it really is calmer (seat chance +0.2)
+        same = [x for x in out if x['_seq'] == o['_seq']]
+        p = first_p(o)
+        if len(out) < n and same and p is not None and all(
+                abs(o['_dep'] - x['_dep']) >= 600 and first_p(x) is not None and p >= first_p(x) + 0.2 for x in same):
             out.append(o)
     out = rank(out, pref)
     f = rank(out, 'fastest')[0]
@@ -369,6 +372,8 @@ def leave_later(o, pool):
             continue
         p, lv = first_p(v), v['crowding']['level']
         if p is None or lv == NO:
+            continue
+        if p0 is not None and p < p0:  # never suggest a lower seat chance than the option itself
             continue
         if (p0 is not None and p >= p0 + 0.2) or (l0 != NO and LV.index(lv) < LV.index(l0)):
             ok.append((LV.index(lv), -p, v['_arr'], v['_dep'], v))

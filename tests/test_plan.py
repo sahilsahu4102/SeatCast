@@ -95,16 +95,17 @@ def test_partial_and_missing_data(W):
 
 def test_gt_ranking_flips(W):
     f, c, b = go(W, pref='fastest'), go(W, pref='comfort'), go(W, pref='balanced')
-    assert [routes(o) for o in f['options']] == [['R2', 'R3'], ['R1'], ['R1']]
-    assert [o['depart'] for o in f['options']] == ['08:05', '08:00', '08:30']
+    # the 08:30 R1 is no calmer than the 08:00 R1 (seat chance not +0.2), so it is not offered as a third option
+    assert [routes(o) for o in f['options']] == [['R2', 'R3'], ['R1']]
+    assert [o['depart'] for o in f['options']] == ['08:05', '08:00']
     assert routes(c['options'][0]) == ['R1'] and c['options'][0]['depart'] == '08:00'
     assert routes(b['options'][0]) == ['R2', 'R3']
     gt = [o['generalised_min'] for o in c['options']]
     assert gt == sorted(gt)
     lab = {o['id']: o['label'] for o in c['options']}
-    assert sorted(lab.values()) == ['balanced', 'comfort', 'fastest']
+    assert sorted(lab.values()) == ['comfort', 'fastest']
     assert lab[f['options'][0]['id']] == 'fastest'
-    assert len({o['id'] for o in f['options']}) == 3 and {o['id'] for o in f['options']} == set(lab)
+    assert len({o['id'] for o in f['options']}) == 2 and {o['id'] for o in f['options']} == set(lab)
 
 
 def test_option_shape(W):

@@ -77,7 +77,7 @@ def test_stops(c):
 
 def test_journeys(c):
     r = check(c.get('/journeys', params={'from': 'A', 'to': 'D', 'depart': '2026-10-28T08:00', 'pref': 'fastest'}))
-    assert len(r['options']) == 3 and r['query']['from_point']['name'] == 'Alpha'
+    assert len(r['options']) == 2 and r['query']['from_point']['name'] == 'Alpha'
     b = next(l for l in r['options'][0]['legs'] if l['mode'] == 'bus')
     assert {'route', 'dir', 'headsign', 'board', 'alight', 'depart', 'arrive', 'ride_min', 'crowding', 'segments',
             'stops'} <= set(b)
