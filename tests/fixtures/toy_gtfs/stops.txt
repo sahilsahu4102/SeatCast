@@ -1,0 +1,7 @@
+stop_id,stop_code,stop_name,stop_lat,stop_lon
+S1,A1,Kashmere Gate ISBT,28.6670,77.2280
+S2,A2,Mandi House,28.6560,77.2300
+S3,A3,Rohini Sec 22,28.6450,77.2320
+S4,A4,Uttam Nagar East,28.6340,77.2340
+S5,A5,Uttam Nagar West,28.6230,77.2360
+S6,A6,Mandi House,28.6120,77.2380

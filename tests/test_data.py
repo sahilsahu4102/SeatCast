@@ -1,4 +1,5 @@
 # Checks on the real outputs of each pipeline step. Each skips when its input isn't built (as in CI).
+import json
 import re
 
 import duckdb
@@ -13,6 +14,7 @@ CSV = RAW / 'tickets' / 'October-Delhi.csv'
 TIX = WORK / 'tickets.parquet'
 PAT, PS, NET = WORK / 'patterns.parquet', WORK / 'pattern_stops.parquet', WORK / 'network.npz'
 FEED = RAW / 'gtfs' / 'stops.txt'
+OD, COV = WORK / 'od.parquet', OUT / 'coverage.json'
 PLATE = re.compile(r'DL ?\d{1,2} ?[A-Z]{1,3} ?\d{4}')
 
 
@@ -84,6 +86,32 @@ def test_demo_query():
     dst = raptor.near(net, 28.6315, 77.2167)  # Connaught Place
     j = raptor.query(net, src, dst, 18 * 3600)
     assert j and min(x['arrive'] for x in j) < 20 * 3600
+
+
+# P2 matching
+@need(OD, PS)
+def test_od():
+    od, ps = pd.read_parquet(OD), pd.read_parquet(PS)
+    n = ps.groupby('pattern_id').size()
+    assert not {'v', 'vehicle', 'vehicle_number'} & set(od.columns)
+    assert od['tid'].is_unique and od['pattern_id'].isin(n.index).all()
+    assert ((od['b'] >= 0) & (od['b'] < od['a']) & (od['a'] < od['pattern_id'].map(n))).all()
+
+
+@need(OD, TIX)
+def test_od_agrees_with_tickets(t):
+    od = pd.read_parquet(OD, columns=['tid', 'pc', 'slot', 'daytype'])
+    x = od.merge(t[['tid', 'pc', 'slot', 'daytype']], on='tid', suffixes=('', '_t'))
+    assert len(x) == len(od)
+    for c in ['pc', 'slot', 'daytype']:
+        assert (x[c] == x[c + '_t']).all(), c
+
+
+@need(COV)
+def test_match_rates():
+    m = json.loads(COV.read_text(encoding='utf-8'))['match']
+    # regression floors; the G2 targets (90 / 85 / 95) are in docs/IMPLEMENTATION_PLAN.md §5
+    assert m['route_matched_pct'] >= 95 and m['both_stops_pct_of_routed'] >= 80 and m['in_order_pct_of_both'] >= 99
 
 
 # Every step: nothing vehicle-level in public outputs (CLAUDE.md §2 rule 5)
