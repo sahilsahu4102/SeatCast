@@ -666,7 +666,7 @@
         '<td class="n">' + num(r.standee_min) + '</td>' +
         '<td class="n">' + buses1(r.F_sched) + ' → ' + buses1(r.F_req) + '</td>' +
         '<td class="n">+' + buses1(r.gap) + '</td>' +
-        '<td class="n">' + num(r.LF_max, 1) + '×</td>' +
+        '<td class="n">' + num(r.LF_max, 1) + '×' + (r.censored ? ' <span class="unc">' + esc(t('censored.short')) + '</span>' : '') + '</td>' +
         '<td class="n">' + num(r.P_max) + '</td></tr>';
     }).join('');
     el.innerHTML = '<div class="tablewrap" tabindex="0" role="region" aria-label="' + esc(t('op.top')) + '"><table class="optable"><thead><tr>' + th +

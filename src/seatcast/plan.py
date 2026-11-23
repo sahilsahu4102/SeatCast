@@ -20,7 +20,7 @@ DT = ['weekday', 'saturday', 'sunday']
 CONF = ['low', 'medium', 'high']
 WHY = [None, 'schedule_gap', 'implausible', 'low_n']  # 0 ok, 1 gap, 2 absurd, 3 no published cell (n < min_cell_n)
 COLS = ['route_id', 'from_stop', 'to_stop', 'slot', 'daytype', 'n', 'N_sched', 'L_low', 'L', 'L_high', 'LF', 'p_seat',
-        'level_low', 'level', 'level_high', 'flag', 'confidence', 'seats', 'total']
+        'level_low', 'level', 'level_high', 'flag', 'confidence', 'seats', 'total', 'censored']
 NOTE = 'Estimates from Oct 2026 app e-tickets expanded to total ridership; see /coverage'
 DAY = 86400
 
@@ -53,6 +53,7 @@ class Cells:
              'conf': enc(c['confidence'], codes(CONF))}
         for n in ['n', 'N_sched', 'L_low', 'L', 'L_high', 'LF', 'p_seat', 'seats', 'total']:
             x[n] = c[n].to_numpy(np.float64)
+        x['cen'] = c['censored'].fillna(False).to_numpy(bool) if 'censored' in c else np.zeros(len(c), bool)
         self.__dict__.update({n: v[ok][o] for n, v in x.items()})
 
     def key(self, r, a, b, d, s):
@@ -169,7 +170,8 @@ def crowd(W, leg, dt):
     segs = []
     for x in range(len(mins)):
         g = {'from': nm[st[x]], 'to': nm[st[x + 1]], 'min': rnd(mins[x], 1), 'level': LV[lv[x]],
-             'p_seat': rnd(p[x]), 'n': None if i[x] < 0 else int(n[x])}
+             'p_seat': rnd(p[x]), 'n': None if i[x] < 0 else int(n[x]),
+             'censored': bool(i[x] >= 0 and C.cen[i[x]])}  # very crowded, magnitude capped
         sh = W.shapes.get((leg['route_id'], str(W.net.stop_id[st[x]]), str(W.net.stop_id[st[x + 1]])))
         if sh:
             g['shape'] = sh
@@ -311,10 +313,10 @@ def pick(opts, pref, n=3):
 
 # ---------- candidates ----------
 
-def search(W, src, dst, t0, dt, prev, ban=()):
-    js = [dict(j, dt=dt, off=0) for j in raptor.query(W.net, src, dst, t0, dt, ban=ban)]
+def search(W, src, dst, t0, dt, prev, ban=(), K=None):
+    js = [dict(j, dt=dt, off=0) for j in raptor.query(W.net, src, dst, t0, dt, ban=ban, K=K)]
     if t0 < int(W.net.dep.max()) - DAY:  # just after midnight: yesterday's service still runs (times past 24:00)
-        js += [dict(j, dt=prev, off=-DAY) for j in raptor.query(W.net, src, dst, t0 + DAY, prev, ban=ban)]
+        js += [dict(j, dt=prev, off=-DAY) for j in raptor.query(W.net, src, dst, t0 + DAY, prev, ban=ban, K=K)]
     return js
 
 
@@ -447,7 +449,7 @@ def plan(W, a, b, depart, dt=None, pref='balanced'):
             last = search(W, src, dst, t0, dt, prev, ban)
             add(last)
         for m in pl['shift_min']:
-            add(search(W, src, dst, t0 + 60 * m, dt, prev))
+            add(search(W, src, dst, t0 + 60 * m, dt, prev, K=pl.get('shift_rides')))  # leave-later alternatives: fewer changes, faster
         for j in list(pool):
             add(later(W, j, 60 * max(pl['shift_min'])))
     opts = [option(W, j, t0) for j in pool]
@@ -458,7 +460,7 @@ def plan(W, a, b, depart, dt=None, pref='balanced'):
     for o in out:
         if o['_seq']:
             sug += [x for x in (leave_later(o, opts), upstream(W, o, pa)) if x]
-    qh = quiet(W, tuple(src), tuple(dst), dt) if src and dst else None
+    qh = quiet(W, tuple(src), tuple(dst), dt) if out and src and dst else None
     res = {'query': q, 'options': [{x: v for x, v in o.items() if not x.startswith('_')} for o in out],
            'suggestions': sug, 'quiet_hour': qh, 'notes': [NOTE]}
     if not out:

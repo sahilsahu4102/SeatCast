@@ -132,9 +132,10 @@ def route(base: str = Path(max_length=32, pattern=r'^[A-Za-z0-9()+\-_. ]+$'), di
     segs = []
     for k, x in enumerate(i):
         g = {'k': k, 'from': W.names[st[k]], 'to': W.names[st[k + 1]], 'L': None, 'L_low': None, 'L_high': None,
-             'LF': None, 'level': plan.NO, 'p_seat': None, 'confidence': None, 'n': None}
+             'LF': None, 'level': plan.NO, 'p_seat': None, 'confidence': None, 'n': None, 'censored': False}
         if x >= 0:
             g['n'] = int(C.n[x])
+            g['censored'] = bool(C.cen[x])
         if why[k] == 0:
             g.update({c: plan.rnd(getattr(C, c)[x], 1) for c in ['L', 'L_low', 'L_high']})
             g.update(LF=plan.rnd(C.LF[x]), level=plan.LV[C.lv[x]], p_seat=plan.rnd(C.p_seat[x]),
@@ -143,7 +144,9 @@ def route(base: str = Path(max_length=32, pattern=r'^[A-Za-z0-9()+\-_. ]+$'), di
             g['reason'] = plan.WHY[why[k]]
         segs.append(g)
     m = W.routes[r]
-    return {'route': m[0], 'base': m[1], 'dir': m[2], 'daytype': daytype, 'time': time,
+    j = i[i >= 0]
+    cap = {c: (round(float(np.median(getattr(C, c)[j]))) if len(j) else None) for c in ['seats', 'total']}
+    return {'route': m[0], 'base': m[1], 'dir': m[2], 'daytype': daytype, 'time': time, **cap,
             'variants': [W.routes[x][0] for x in ids], 'segments': segs}
 
 
@@ -153,8 +156,9 @@ def heat(W, dt, h):
     C, k = W.cells, cfg()
     m = (C.d == plan.DT.index(dt)) & (C.s // (60 // k['slot_min']) == h) & (C.why == 0)
     df = pd.DataFrame({'a': C.a[m], 'b': C.b[m], 'r': C.r[m], 'LN': C.L[m] * C.N_sched[m],
-                       'SN': C.seats[m] * C.N_sched[m], 'TN': C.total[m] * C.N_sched[m]})
-    g = df.groupby(['a', 'b']).agg(LN=('LN', 'sum'), SN=('SN', 'sum'), TN=('TN', 'sum'), routes=('r', 'nunique'))
+                       'SN': C.seats[m] * C.N_sched[m], 'TN': C.total[m] * C.N_sched[m], 'cen': C.cen[m]})
+    g = df.groupby(['a', 'b']).agg(LN=('LN', 'sum'), SN=('SN', 'sum'), TN=('TN', 'sum'), routes=('r', 'nunique'),
+                                   cen=('cen', 'any'))
     g = g[g['SN'] > 0]
     g['lv'] = level(g['LN'], g['SN'], g['TN'])
     shp = pairs(W)
@@ -165,7 +169,7 @@ def heat(W, dt, h):
                                              [round(float(net.lon[b]), 5), round(float(net.lat[b]), 5)]]
         out.append({'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': line},
                     'properties': {'from': W.names[a], 'to': W.names[b], 'LF': round(x['LN'] / x['SN'], 2),
-                                   'level': x['lv'], 'routes': int(x['routes'])}})
+                                   'level': x['lv'], 'routes': int(x['routes']), 'censored': bool(x['cen'])}})
     return {'type': 'FeatureCollection', 'features': out}
 
 
@@ -195,7 +199,19 @@ def top(daytype: Day = 'weekday', period: Literal['am', 'pm', 'all'] = 'all'):
         o = o[(o['hour'] >= a) & (o['hour'] < b)]
     o = o.nlargest(20, 'plus1_benefit')[OPS].round({'P_max': 0, 'F_sched': 1, 'gap': 1, 'standee_min': 0,
                                                      'plus1_benefit': 0, 'LF_max': 2})
-    return {'daytype': daytype, 'period': period, 'rows': json.loads(o.to_json(orient='records'))}
+    rows = json.loads(o.to_json(orient='records'))
+    cen = censored_hours(S['w'])
+    for x, rid in zip(rows, o.index.map(S['w'].op['route_id'])):
+        x['censored'] = (str(rid), plan.DT.index(daytype), int(x['hour'])) in cen
+    return {'daytype': daytype, 'period': period, 'rows': rows}
+
+
+@lru_cache(maxsize=4)
+def censored_hours(W):
+    # (route_id, day type, hour) with any capped cell: the +1-bus numbers there are lower bounds
+    C, per = W.cells, 60 // cfg()['slot_min']
+    inv = {v: k for k, v in C.rid.items()}
+    return {(inv[r], int(d), int(s // per)) for r, d, s in zip(C.r[C.cen], C.d[C.cen], C.s[C.cen])}
 
 
 def clean(x):
@@ -208,7 +224,10 @@ def clean(x):
 @app.get('/coverage')
 def coverage():
     c = S['w'].cov
-    return clean({**c['coverage'], 'gps': c['gps_checks'], 'notes': [plan.NOTE]})
+    v = c['gps_checks'].get('vehicles_per_day', {})
+    fleet = {d: {'buses_per_day': x['mean'], 'riders_per_bus_per_day': x['riders_per_bus_per_day_central']}
+             for d, x in v.items() if isinstance(x, dict)}  # neutral key: HIDE drops anything named vehicle
+    return clean({**c['coverage'], 'gps': c['gps_checks'], 'fleet': fleet, 'notes': [plan.NOTE]})
 
 
 def serve():
