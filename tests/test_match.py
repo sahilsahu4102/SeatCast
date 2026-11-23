@@ -81,3 +81,16 @@ def test_swapped_direction(feed):
 def test_same_stop_dropped(feed):
     res = match.build(ods('10UP', [('Rohini Sec 22', 'Rohini Sector 22'), ('Rohini Sec 22', 'Uttam Nagar East')]), *feed)
     assert res['od']['status'].tolist() == ['same', 'ok']
+
+
+def test_alias_variants():
+    # "a|b": the first GTFS spelling present on the route wins, so one alias row covers both road sides
+    q = pd.DataFrame({'route_id': ['r1', 'r2'], 'name_n': ['s j hospital'] * 2, 'raw': ['S J Hospital'] * 2, 'p': [5, 3]})
+    cand = pd.DataFrame({'route_id': ['r1', 'r2'], 'gtfs_n': ['safdurjung hospital aiims', 'aiims safdurjung hospital'],
+                         'raw': ['x', 'y']})
+    al = pd.DataFrame({'route_id': [''], 'name_n': ['s j hospital'],
+                       'gtfs_n': ['safdurjung hospital aiims|aiims safdurjung hospital']})
+    nm = match.match_names(q, cand, al, None).set_index('route_id')
+    assert nm.loc['r1', 'gtfs_n'] == 'safdurjung hospital aiims'
+    assert nm.loc['r2', 'gtfs_n'] == 'aiims safdurjung hospital'
+    assert (nm['rung'] == 'b').all()

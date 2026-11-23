@@ -205,15 +205,16 @@ def match_route_names(q, c, mc):
 def match_names(q, cand, alias, mc):
     # q: route_id, name_n, raw, p. cand: route_id, gtfs_n, raw. alias: route_id ('' = any), name_n, gtfs_n.
     cs = {r: d.drop_duplicates('gtfs_n').reset_index(drop=True) for r, d in cand.groupby('route_id')}
-    al = {(r, n): t for r, n, t in zip(alias['route_id'], alias['name_n'], alias['gtfs_n'])}
+    # an alias may list GTFS spellings as "a|b", in order of preference; the first one on the route wins
+    al = {(r, n): t.split('|') for r, n, t in zip(alias['route_id'], alias['name_n'], alias['gtfs_n'])}
     out = []
     for r, d in q.groupby('route_id'):
         c = cs.get(r, pd.DataFrame({'gtfs_n': [], 'raw': []}))
         have = set(c['gtfs_n'])
         d = d.reset_index(drop=True)
         a = d['name_n'].isin(have)
-        t = [al.get((r, n)) or al.get(('', n)) for n in d['name_n']]
-        b = pd.Series([x in have for x in t]) & ~a
+        t = [next((x for x in al.get((r, n)) or al.get(('', n)) or [] if x in have), None) for n in d['name_n']]
+        b = pd.Series([x is not None for x in t]) & ~a
         todo = d[~a & ~b]
         x = match_route_names(todo, c, mc) if len(todo) else pd.DataFrame(columns=['name_n'])
         y = pd.DataFrame({'name_n': d['name_n'], 'rung': np.where(a, 'a', np.where(b, 'b', None)),
@@ -316,7 +317,8 @@ def configs(r):
     al = pd.read_csv(ROOT / 'config' / 'stop_alias.csv', dtype=str).fillna('')
     ids = dict(zip(r['key'], r['route_id']))
     al = pd.DataFrame({'route_id': [ids.get(key(x), '') if x else '' for x in al['route']],
-                       'name_n': al['ticket_name'].map(norm), 'gtfs_n': al['gtfs_name'].map(norm)})
+                       'name_n': al['ticket_name'].map(norm),
+                       'gtfs_n': al['gtfs_name'].map(lambda s: '|'.join(norm(x) for x in s.split('|')))})
     return rmap, al
 
 
