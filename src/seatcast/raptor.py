@@ -153,7 +153,7 @@ def query(net, src, dst, t0, dt='weekday', ban=(), K=None, window=None):
     end = t0 + 60 * (window or pl['window_min'])
     chg = pl.get('change_s', 0)
     V, S = net.view(dt), len(net.stop_id)
-    ban = set(ban)
+    live = np.array([len(x[1]) > 0 for x in V]) & ~np.isin(net.route, list(ban))
     tau = np.full((K + 1, S), INF, np.int64)
     ride = np.full((K + 1, S), INF, np.int64)
     best = np.full(S, INF, np.int64)
@@ -166,29 +166,15 @@ def query(net, src, dst, t0, dt='weekday', ban=(), K=None, window=None):
     marked = {s for s, _ in src}
     tbest = min((tau[0, s] + w for s, w in dst if tau[0, s] < INF), default=INF)
     for k in range(1, K + 1):
-        Q = {}
-        for s in marked:
-            for j in range(net.sp_ptr[s], net.sp_ptr[s + 1]):
-                p, i = net.sp_pat[j], net.sp_pos[j]
-                if len(V[p][1]) and net.route[p] not in ban and i < len(V[p][0]) - 1:
-                    Q[p] = min(Q.get(p, i), i)
         imp = []
-        for p, i0 in Q.items():
-            stops, D, A, _ = V[p]
-            r, b = -1, -1
-            for i in range(i0, len(stops)):
-                s = stops[i]
-                if r >= 0 and A[r, i] < min(best[s], tbest):
-                    ride[k, s] = tau[k, s] = best[s] = A[r, i]
-                    par[k, s] = (p, r, b, i)
+        for p, i0 in queue(net, marked, live):
+            for s, v, row in scan(V[p], i0, tau[k - 1], chg if k > 1 else 0, t0, end, best, tbest):
+                if v < min(best[s], tbest):
+                    ride[k, s] = tau[k, s] = best[s] = v
+                    par[k, s] = (p, *row)
                     imp.append(s)
                     if s in egress:
-                        tbest = min(tbest, A[r, i] + egress[s])
-                tp = tau[k - 1, s]
-                if tp < INF and (r < 0 or tp + (chg if k > 1 else 0) <= D[r, i]):
-                    x = np.searchsorted(D[:, i], tp + (chg if k > 1 else 0))
-                    if x < len(D) and D[x, i] <= end and (r < 0 or x < r):
-                        r, b = x, i
+                        tbest = min(tbest, v + egress[s])
         marked = set(imp)
         for s in imp:
             for j in range(net.fp_ptr[s], net.fp_ptr[s + 1]):
@@ -205,6 +191,45 @@ def query(net, src, dst, t0, dt='weekday', ban=(), K=None, window=None):
     return pareto(net, V, tau, ride, par, wfrom, src, dst, K)
 
 
+def queue(net, marked, live):
+    # patterns serving a marked stop, each with its earliest marked position
+    m = np.fromiter(marked, np.int64)
+    a, n = net.sp_ptr[m], net.sp_ptr[m + 1] - net.sp_ptr[m]
+    j = np.repeat(a - np.cumsum(n) + n, n) + np.arange(n.sum())
+    p, i = net.sp_pat[j], net.sp_pos[j]
+    k = live[p] & (i < np.diff(net.pat_ptr)[p] - 1)
+    p, i = p[k], i[k]
+    o = np.lexsort((i, p))
+    p, i = p[o], i[o]
+    f = np.r_[True, p[1:] != p[:-1]] if len(p) else np.zeros(0, bool)
+    return zip(p[f].tolist(), i[f].tolist())
+
+
+def scan(v, i0, prev, chg, t0, end, best, tbest):
+    # one pattern from position i0, vectorised: the earliest catchable trip at each stop, kept while it beats later boardings
+    stops, D, A, _ = v
+    lo, hi = np.searchsorted(D[:, -1], t0), np.searchsorted(D[:, 0], end, 'right')  # trips that can be ridden in the window
+    if lo >= hi:
+        return []
+    st, d, a, T = stops[i0:], D[lo:hi, i0:], A[lo:hi, i0:], hi - lo
+    c = np.arange(len(st))
+    pv = prev[st]
+    thr = pv + chg
+    x = (d >= thr).argmax(0)
+    dx = d[x, c]
+    x = np.where((pv < INF) & (dx >= thr) & (dx <= end), x, T)
+    r = np.minimum.accumulate(x)
+    pr = np.concatenate([[T], r[:-1]])  # trip ridden into position j
+    b = np.maximum.accumulate(np.where(x < pr, c, -1))
+    pb = np.concatenate([[-1], b[:-1]])
+    on = np.flatnonzero(pr < T)
+    if not len(on):
+        return []
+    arr = a[pr[on], on]
+    j = on[arr < np.minimum(best[st[on]], tbest)]
+    return [(int(st[q]), int(a[pr[q], q]), (int(pr[q] + lo), int(pb[q] + i0), int(q + i0))) for q in j]
+
+
 def pareto(net, V, tau, ride, par, wfrom, src, dst, K):
     out, last = [], INF
     acc = dict(src)
@@ -218,7 +243,10 @@ def pareto(net, V, tau, ride, par, wfrom, src, dst, K):
         last = a
         legs = trace(net, V, ride, par, wfrom, k, s, tau)
         legs.insert(0, {'mode': 'walk', 'from': None, 'to': legs[0]['board'], 'sec': acc[legs[0]['board']]})
-        legs.append({'mode': 'walk', 'from': s, 'to': None, 'sec': w})
+        if legs[-1]['mode'] == 'walk':  # footpath then egress: one walk
+            legs[-1] = {'mode': 'walk', 'from': legs[-1]['from'], 'to': None, 'sec': legs[-1]['sec'] + w}
+        else:
+            legs.append({'mode': 'walk', 'from': s, 'to': None, 'sec': w})
         out.append({'arrive': int(a), 'rides': k, 'legs': legs})
     return out
 

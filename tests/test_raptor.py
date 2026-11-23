@@ -58,6 +58,13 @@ def test_footpath_transfer(net):
     assert w['from'] == ix(net, 'E') and w['to'] == ix(net, 'F') and 0 < w['sec'] < 300
 
 
+def test_footpath_then_egress_is_one_walk(net):
+    j = go(net, 'C', 'F', 9 * H)
+    assert [l['mode'] for l in j[0]['legs']] == ['walk', 'bus', 'walk']
+    w = j[0]['legs'][-1]
+    assert w['from'] == ix(net, 'E') and w['to'] is None and 0 < w['sec'] < 300
+
+
 def test_past_midnight(net):
     j = go(net, 'A', 'D', 24 * H + 20 * 60)
     assert [(x['arrive'], x['legs'][1]['trip_id']) for x in j] == [(25 * H + 30 * 60, 'R1_24_30')]
