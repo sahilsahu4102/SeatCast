@@ -1,4 +1,5 @@
 import datetime as dtm
+import functools
 import hashlib
 import json
 import sys
@@ -184,9 +185,11 @@ def crowd(W, leg, dt):
         cb = run_of(ok & (lv >= 2))
         cb = [nm[st[cb[0]]], nm[st[cb[1] + 1]]] if cb else None
         kk = round(10 * pb)
+        odds = 'likely' if pb > .5 else 'unlikely' if pb < .5 else 'possible'
         c = {'level': LV[lv[j].max()], 'p_seat': rnd(pb), 'stand_min': rnd((mins * (1 - q)).sum(), 1),
              'crowded_between': cb,
-             'text': f'Seats on {kk} of 10 trips' + (f' · crowded {cb[0]} to {cb[1]}' if cb else ''),
+             'text': f'Seat {odds} at boarding ({kk} of 10 trips) · crowded {cb[0]} to {cb[1]}' if cb
+             else f'Seats on {kk} of 10 trips',
              'confidence': CONF[C.get('conf', i, 9)[j].min()], 'n': int(n[top]),
              'range': [LV[C.lo[i[top]]], LV[C.hi[i[top]]]]}
     return c, segs, mins, mult
@@ -269,21 +272,39 @@ KEYS = {'fastest': lambda o: (o['_arr'], o['transfers'], o['_gt']),
         'balanced': lambda o: (o['_gth'], o['_arr'])}
 
 
+def trust(o):
+    c = o['crowding'] or {}
+    return CONF.index(c.get('confidence') or 'low'), c.get('n') or 0
+
+
+def rank(opts, pref):
+    # GT within 3 min counts as a tie: the better-evidenced option goes first (ponytail: pairwise rule, not a strict order)
+    if pref == 'fastest':
+        return sorted(opts, key=KEYS[pref])
+    g = '_gth' if pref == 'balanced' else '_gt'
+
+    def cmp(a, b):
+        if abs(a[g] - b[g]) <= 3 and trust(a) != trust(b):
+            return -1 if trust(a) > trust(b) else 1
+        return -1 if KEYS[pref](a) < KEYS[pref](b) else 1 if KEYS[pref](a) > KEYS[pref](b) else 0
+    return sorted(sorted(opts, key=KEYS[pref]), key=functools.cmp_to_key(cmp))
+
+
 def pick(opts, pref, n=3):
-    s = sorted(opts, key=KEYS[pref])
+    s = rank(opts, pref)
     out = s[:1]
-    for o in [min(opts, key=KEYS['fastest']), min(opts, key=KEYS['comfort'])] + s:
+    for o in [rank(opts, 'fastest')[0], rank(opts, 'comfort')[0]] + s:
         if len(out) < n and o['_seq'] not in {x['_seq'] for x in out}:
             out.append(o)
     for o in s:  # fill with the same routes at another departure
         if len(out) < n and all(o['_seq'] != x['_seq'] or abs(o['_dep'] - x['_dep']) >= 600 for x in out):
             out.append(o)
-    out = sorted(out, key=KEYS[pref])
-    f = min(out, key=KEYS['fastest'])
+    out = rank(out, pref)
+    f = rank(out, 'fastest')[0]
     rest = [o for o in out if o is not f]
-    c = min(rest, key=KEYS['comfort']) if rest else None
+    c = rank(rest, 'comfort')[0] if rest else None
     for o in out:
-        o['label'] = 'fastest' if o is f else 'comfort' if o is c and o['_gt'] < f['_gt'] else 'balanced'
+        o['label'] = 'fastest' if o is f else 'comfort' if o is c and rank([f, c], 'comfort')[0] is c else 'balanced'
         o['generalised_min'] = round(o['_gth'] if pref == 'balanced' else o['_gt'], 1)
     return out
 
@@ -334,20 +355,27 @@ def later(W, j, span):
 
 
 def leave_later(o, pool):
-    span = 60 * max(cfg()['planner']['shift_min'])
-    p0, l0 = first_p(o), o['crowding'] and o['crowding']['level']
-    if p0 is None:
-        return None
-    for v in sorted(pool, key=lambda x: x['_dep']):
-        if v['_seq'] != o['_seq'] or v['_dep'] <= o['_dep'] or v['_arr'] - o['_arr'] > span:
+    # any candidate leaving at least one shift step later, any route, arriving at most 30 min later: seat chance at first
+    # boarding up 0.2, or the worst level on the ride (seated or not: a seat in a crushed bus is still crushed) down a
+    # step. Best = calmest, then seat.
+    sh = cfg()['planner']['shift_min']
+    span, step = 60 * max(sh), 60 * min(sh)
+    p0, l0 = first_p(o), (o['crowding'] or {}).get('level', NO)
+    ok = []
+    for v in pool:
+        if v['_dep'] < o['_dep'] + step or v['_arr'] - o['_arr'] > span or not v['crowding']:
             continue
         p, lv = first_p(v), v['crowding']['level']
         if p is None or lv == NO:
             continue
-        if p >= p0 + 0.2 or LV.index(lv) < LV.index(l0):
-            return {'type': 'leave_later', 'for': o['id'], 'depart': v['depart'], 'p_seat': rnd(p),
-                    'extra_min': round((v['_arr'] - o['_arr']) / 60), 'level': lv}
-    return None
+        if (p0 is not None and p >= p0 + 0.2) or (l0 != NO and LV.index(lv) < LV.index(l0)):
+            ok.append((LV.index(lv), -p, v['_arr'], v['_dep'], v))
+    if not ok:
+        return None
+    v = min(ok, key=lambda x: x[:4])[4]
+    return {'type': 'leave_later', 'for': o['id'], 'depart': v['depart'], 'p_seat': rnd(first_p(v)),
+            'extra_min': max(0, round((v['_arr'] - o['_arr']) / 60)), 'level': v['crowding']['level'],
+            'route': ' + '.join(l['route'] for l in v['legs'] if l['mode'] == 'bus')}
 
 
 def first_p(o):
@@ -481,7 +509,8 @@ def show(r):
             if s['for'] != o['id']:
                 continue
             if s['type'] == 'leave_later':
-                print(f"  -> leave at {s['depart']}: seat chance {s['p_seat']}, {s['extra_min']} min later arrival")
+                print(f"  -> leave at {s['depart']} on {s['route']}: {s['level']}, seat chance {s['p_seat']}, "
+                      f"{s['extra_min']} min later arrival")
             else:
                 print(f"  -> walk {s['walk_min']} min to {s['stop']} and board there: seat chance {s['p_seat']}")
     if r['quiet_hour']:

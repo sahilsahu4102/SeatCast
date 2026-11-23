@@ -80,7 +80,7 @@ def test_crowding_per_leg(W):
     assert c['range'] == [F, F]
     c, segs, *_ = plan.crowd(W, leg(W, 'B', 'D', 8 * H), 'weekday')  # R3, packed
     assert c['level'] == X and c['crowded_between'] == ['Bravo', 'Delta']
-    assert c['text'] == 'Seats on 0 of 10 trips · crowded Bravo to Delta' and c['stand_min'] == 20
+    assert c['text'] == 'Seat unlikely at boarding (0 of 10 trips) · crowded Bravo to Delta' and c['stand_min'] == 20
 
 
 def test_partial_and_missing_data(W):
@@ -124,21 +124,42 @@ def test_leave_later(W):
     r = go(W, pref='comfort')
     o = r['options'][0]
     s = [x for x in r['suggestions'] if x['type'] == 'leave_later']
-    assert s == [{'type': 'leave_later', 'for': o['id'], 'depart': '08:30', 'p_seat': .9, 'extra_min': 30, 'level': M}]
+    assert s == [{'type': 'leave_later', 'for': o['id'], 'depart': '08:30', 'p_seat': .9, 'extra_min': 30, 'level': M,
+                  'route': 'R1'}]
+
+
+def opt(dep, arr, p, lv, r='R1', gt=0, conf='medium', n=20):
+    c = {'level': lv, 'p_seat': p, 'confidence': conf, 'n': n}
+    return {'id': f'{r}{dep}', '_dep': dep, '_arr': arr, '_seq': (r,), '_gt': gt, '_gth': gt, 'transfers': 0, 'depart': plan.hm(dep),
+            'crowding': c, 'legs': [{'mode': 'bus', 'route': r, 'crowding': c}]}
 
 
 def test_leave_later_rules():
-    def o(dep, arr, p, lv, seq=('R1',), i='x'):
-        c = {'level': lv, 'p_seat': p}
-        return {'id': i, '_dep': dep, '_arr': arr, '_seq': seq, 'depart': plan.hm(dep), 'crowding': c,
-                'legs': [{'mode': 'bus', 'crowding': c}]}
-    a = o(0, 3000, .5, S)
+    o, a = opt, opt(0, 3000, .5, S)
     assert plan.leave_later(a, [o(600, 3600, .7, S)])['depart'] == '00:10'           # p rises by 0.2
     assert plan.leave_later(a, [o(600, 3600, .6, F)])['level'] == F                  # level drops a step
     assert plan.leave_later(a, [o(600, 3600, .6, S)]) is None                        # neither
     assert plan.leave_later(a, [o(600, 3000 + 1860, .9, M)]) is None                 # > 30 min later arrival
-    assert plan.leave_later(a, [o(600, 3600, .9, M, ('R9',))]) is None               # other routes
-    assert plan.leave_later(o(0, 3000, None, NO), [o(600, 3600, .9, M)]) is None     # no data to compare
+    assert plan.leave_later(a, [o(-60, 2900, .9, M)]) is None                        # leaves earlier
+    assert plan.leave_later(a, [o(540, 3000, .9, M)]) is None                        # under one 10 min step later
+    s = plan.leave_later(a, [o(600, 3600, .9, M, 'R9')])                             # another route counts
+    assert (s['route'], s['extra_min'], s['for']) == ('R9', 10, a['id'])
+    s = plan.leave_later(a, [o(600, 3600, .7, S), o(1200, 4200, .8, F), o(1800, 4800, .9, F, 'R9')])
+    assert (s['depart'], s['level'], s['p_seat']) == ('00:30', F, .9)                # calmest, then best seat
+    seated = opt(0, 3000, .9, S)
+    assert plan.leave_later(seated, [o(600, 3600, 1.0, X)]) is None                  # a seat in a crushed bus
+    assert plan.leave_later(opt(0, 3000, None, NO), [o(600, 3600, .9, M)]) is None   # nothing to compare
+    assert plan.leave_later(opt(0, 3000, .9, NO), [o(600, 3600, 1.0, M)]) is None
+
+
+def test_confidence_tie_break():
+    lo, hi = opt(0, 3000, .5, S, 'L', gt=50, conf='low', n=10), opt(0, 3100, .5, S, 'H', gt=52.9, conf='high', n=300)
+    assert [x['id'] for x in plan.rank([lo, hi], 'comfort')] == ['H0', 'L0']
+    hi['_gt'] = hi['_gth'] = 53.1
+    assert [x['id'] for x in plan.rank([lo, hi], 'comfort')] == ['L0', 'H0']                # beyond 3 min: GT wins
+    a, b = opt(0, 3000, .5, S, 'A', gt=50, n=10), opt(0, 3100, .5, S, 'B', gt=51, n=40)
+    assert [x['id'] for x in plan.rank([a, b], 'balanced')] == ['B0', 'A0']                 # same confidence: larger n
+    assert [x['id'] for x in plan.rank([b, a], 'fastest')] == ['A0', 'B0']                  # fastest ignores it
 
 
 def test_board_upstream(W):
