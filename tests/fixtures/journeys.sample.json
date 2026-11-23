@@ -1,0 +1,132 @@
+{
+  "_synthetic": "SYNTHETIC UI FIXTURE. Every number, route code and crowding level here is made up to exercise the P6a layout. Not an estimate. Stop coordinates are approximate. Fields marked in _proposed are not in the CLAUDE.md section 8 shape yet; the UI works without them.",
+  "_proposed": ["query.from_point", "query.to_point", "options[].id", "legs[].headsign", "legs[].arrive", "legs[].stops", "legs[].segments", "crowding.reason", "suggestions[].for"],
+  "query": {
+    "from": "Anand Vihar ISBT", "to": "Connaught Place", "depart": "2026-10-28T18:00", "daytype": "weekday", "pref": "balanced",
+    "from_point": {"name": "Anand Vihar ISBT", "lat": 28.6492, "lon": 77.3141},
+    "to_point": {"name": "Connaught Place", "lat": 28.6328, "lon": 77.2195}
+  },
+  "options": [
+    {
+      "id": "o1", "label": "fastest",
+      "depart": "18:04", "arrive": "18:49", "total_min": 45, "transfers": 0, "generalised_min": 71.2,
+      "legs": [
+        {"mode": "walk", "to": "Anand Vihar ISBT", "min": 3},
+        {"mode": "bus", "route": "740", "dir": "UP", "headsign": "Connaught Place", "board": "Anand Vihar ISBT", "alight": "Connaught Place",
+         "depart": "18:07", "arrive": "18:46", "ride_min": 39,
+         "crowding": {"level": "CRUSHED_STANDING_ROOM_ONLY", "p_seat": 0.4, "stand_min": 21.5,
+                      "crowded_between": ["Laxmi Nagar", "Mandi House"],
+                      "text": "Seats on 4 of 10 trips · crowded Laxmi Nagar to Mandi House",
+                      "confidence": "medium", "n": 42, "range": ["FEW_SEATS_AVAILABLE", "CRUSHED_STANDING_ROOM_ONLY"]},
+         "stops": [
+           {"name": "Anand Vihar ISBT", "lat": 28.6469, "lon": 77.3159},
+           {"name": "Karkarduma Court", "lat": 28.6489, "lon": 77.3051},
+           {"name": "Preet Vihar", "lat": 28.6417, "lon": 77.2953},
+           {"name": "Nirman Vihar", "lat": 28.6366, "lon": 77.2867},
+           {"name": "Laxmi Nagar", "lat": 28.6305, "lon": 77.2775},
+           {"name": "ITO", "lat": 28.6286, "lon": 77.2410},
+           {"name": "Mandi House", "lat": 28.6258, "lon": 77.2341},
+           {"name": "Barakhamba Road", "lat": 28.6298, "lon": 77.2244},
+           {"name": "Connaught Place", "lat": 28.6315, "lon": 77.2167}
+         ],
+         "segments": [
+           {"from": "Anand Vihar ISBT", "to": "Karkarduma Court", "min": 4, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.6, "n": 51},
+           {"from": "Karkarduma Court", "to": "Preet Vihar", "min": 4, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.55, "n": 48},
+           {"from": "Preet Vihar", "to": "Nirman Vihar", "min": 3, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.5, "n": 46},
+           {"from": "Nirman Vihar", "to": "Laxmi Nagar", "min": 3, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.45, "n": 44},
+           {"from": "Laxmi Nagar", "to": "ITO", "min": 11, "level": "CRUSHED_STANDING_ROOM_ONLY", "p_seat": 0.1, "n": 42},
+           {"from": "ITO", "to": "Mandi House", "min": 5, "level": "STANDING_ROOM_ONLY", "p_seat": 0.2, "n": 39},
+           {"from": "Mandi House", "to": "Barakhamba Road", "min": 5, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.6, "n": 30},
+           {"from": "Barakhamba Road", "to": "Connaught Place", "min": 4, "level": "MANY_SEATS_AVAILABLE", "p_seat": 0.9, "n": 22}
+         ]},
+        {"mode": "walk", "to": "destination", "min": 3}
+      ]
+    },
+    {
+      "id": "o2", "label": "balanced",
+      "depart": "18:06", "arrive": "19:05", "total_min": 59, "transfers": 1, "generalised_min": 78.4,
+      "legs": [
+        {"mode": "walk", "to": "Anand Vihar ISBT", "min": 3},
+        {"mode": "bus", "route": "623A", "dir": "DOWN", "headsign": "Pragati Maidan", "board": "Anand Vihar ISBT", "alight": "Pragati Maidan",
+         "depart": "18:09", "arrive": "18:40", "ride_min": 31,
+         "crowding": {"level": "STANDING_ROOM_ONLY", "p_seat": 0.3, "stand_min": 15.0,
+                      "crowded_between": ["Anand Vihar ISBT", "Mayur Vihar Ph-1"],
+                      "text": "Seats on 3 of 10 trips · crowded Anand Vihar ISBT to Mayur Vihar Ph-1",
+                      "confidence": "medium", "n": 27, "range": ["FEW_SEATS_AVAILABLE", "STANDING_ROOM_ONLY"]},
+         "stops": [
+           {"name": "Anand Vihar ISBT", "lat": 28.6469, "lon": 77.3159},
+           {"name": "Ganesh Nagar", "lat": 28.6290, "lon": 77.3010},
+           {"name": "Mayur Vihar Ph-1", "lat": 28.6044, "lon": 77.2895},
+           {"name": "Akshardham", "lat": 28.6180, "lon": 77.2790},
+           {"name": "Pragati Maidan", "lat": 28.6233, "lon": 77.2430}
+         ],
+         "segments": [
+           {"from": "Anand Vihar ISBT", "to": "Ganesh Nagar", "min": 8, "level": "STANDING_ROOM_ONLY", "p_seat": 0.3, "n": 27},
+           {"from": "Ganesh Nagar", "to": "Mayur Vihar Ph-1", "min": 9, "level": "STANDING_ROOM_ONLY", "p_seat": 0.35, "n": 25},
+           {"from": "Mayur Vihar Ph-1", "to": "Akshardham", "min": 6, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.6, "n": 19},
+           {"from": "Akshardham", "to": "Pragati Maidan", "min": 8, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.65, "n": 14}
+         ]},
+        {"mode": "walk", "to": "Pragati Maidan", "min": 2},
+        {"mode": "bus", "route": "440", "dir": "UP", "headsign": "Connaught Place", "board": "Pragati Maidan", "alight": "Connaught Place",
+         "depart": "18:46", "arrive": "19:02", "ride_min": 16,
+         "crowding": {"level": "FEW_SEATS_AVAILABLE", "p_seat": 0.8, "stand_min": 2.1,
+                      "crowded_between": null,
+                      "text": "Seats on 8 of 10 trips",
+                      "confidence": "high", "n": 64, "range": ["MANY_SEATS_AVAILABLE", "FEW_SEATS_AVAILABLE"]},
+         "stops": [
+           {"name": "Pragati Maidan", "lat": 28.6233, "lon": 77.2430},
+           {"name": "Mandi House", "lat": 28.6258, "lon": 77.2341},
+           {"name": "Barakhamba Road", "lat": 28.6298, "lon": 77.2244},
+           {"name": "Connaught Place", "lat": 28.6315, "lon": 77.2167}
+         ],
+         "segments": [
+           {"from": "Pragati Maidan", "to": "Mandi House", "min": 6, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.8, "n": 64},
+           {"from": "Mandi House", "to": "Barakhamba Road", "min": 5, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.85, "n": 58},
+           {"from": "Barakhamba Road", "to": "Connaught Place", "min": 5, "level": "MANY_SEATS_AVAILABLE", "p_seat": 0.95, "n": 41}
+         ]},
+        {"mode": "walk", "to": "destination", "min": 3}
+      ]
+    },
+    {
+      "id": "o3", "label": "comfort",
+      "depart": "18:24", "arrive": "19:12", "total_min": 48, "transfers": 0, "generalised_min": 62.5,
+      "legs": [
+        {"mode": "walk", "to": "Anand Vihar ISBT", "min": 3},
+        {"mode": "bus", "route": "740", "dir": "UP", "headsign": "Connaught Place", "board": "Anand Vihar ISBT", "alight": "Connaught Place",
+         "depart": "18:27", "arrive": "19:09", "ride_min": 42,
+         "crowding": {"level": "FEW_SEATS_AVAILABLE", "p_seat": 0.8, "stand_min": 4.0,
+                      "crowded_between": null,
+                      "text": "Seats on 8 of 10 trips",
+                      "confidence": "high", "n": 61, "range": ["MANY_SEATS_AVAILABLE", "STANDING_ROOM_ONLY"]},
+         "stops": [
+           {"name": "Anand Vihar ISBT", "lat": 28.6469, "lon": 77.3159},
+           {"name": "Karkarduma Court", "lat": 28.6489, "lon": 77.3051},
+           {"name": "Preet Vihar", "lat": 28.6417, "lon": 77.2953},
+           {"name": "Nirman Vihar", "lat": 28.6366, "lon": 77.2867},
+           {"name": "Laxmi Nagar", "lat": 28.6305, "lon": 77.2775},
+           {"name": "ITO", "lat": 28.6286, "lon": 77.2410},
+           {"name": "Mandi House", "lat": 28.6258, "lon": 77.2341},
+           {"name": "Barakhamba Road", "lat": 28.6298, "lon": 77.2244},
+           {"name": "Connaught Place", "lat": 28.6315, "lon": 77.2167}
+         ],
+         "segments": [
+           {"from": "Anand Vihar ISBT", "to": "Karkarduma Court", "min": 4, "level": "MANY_SEATS_AVAILABLE", "p_seat": 0.95, "n": 66},
+           {"from": "Karkarduma Court", "to": "Preet Vihar", "min": 4, "level": "MANY_SEATS_AVAILABLE", "p_seat": 0.9, "n": 64},
+           {"from": "Preet Vihar", "to": "Nirman Vihar", "min": 4, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.8, "n": 63},
+           {"from": "Nirman Vihar", "to": "Laxmi Nagar", "min": 3, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.8, "n": 61},
+           {"from": "Laxmi Nagar", "to": "ITO", "min": 12, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.7, "n": 61},
+           {"from": "ITO", "to": "Mandi House", "min": 5, "level": "FEW_SEATS_AVAILABLE", "p_seat": 0.75, "n": 55},
+           {"from": "Mandi House", "to": "Barakhamba Road", "min": 5, "level": "MANY_SEATS_AVAILABLE", "p_seat": 0.9, "n": 40},
+           {"from": "Barakhamba Road", "to": "Connaught Place", "min": 5, "level": "MANY_SEATS_AVAILABLE", "p_seat": 0.95, "n": 31}
+         ]},
+        {"mode": "walk", "to": "destination", "min": 3}
+      ]
+    }
+  ],
+  "suggestions": [
+    {"type": "leave_later", "for": "o1", "depart": "18:20", "p_seat": 0.7, "extra_min": 14},
+    {"type": "board_upstream", "for": "o1", "stop": "Kaushambi", "walk_min": 6, "p_seat": 0.65}
+  ],
+  "quiet_hour": {"time": "11:00", "total_min": 38, "level": "MANY_SEATS_AVAILABLE"},
+  "notes": ["SYNTHETIC FIXTURE: not computed from tickets. Estimates from Oct 2026 app e-tickets expanded to total ridership; see /coverage"]
+}

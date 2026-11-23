@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SeatCast Delhi</title>
+<meta name="description" content="How crowded Delhi buses usually are, shown next to every journey option. Estimated from October 2026 app tickets.">
+<meta name="theme-color" content="#ffd400">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Devanagari:wdth,wght@75..100,400..700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-seat2" viewBox="0 0 16 16"><path d="M2.5 3v10M2.5 9.5h4v3.5M9.5 3v10M9.5 9.5h4v3.5"/></symbol>
+  <symbol id="i-seat1" viewBox="0 0 16 16"><path d="M5.5 2.5v11M5.5 9.5h5v4"/></symbol>
+  <symbol id="i-stand" viewBox="0 0 16 16"><circle cx="8" cy="3.2" r="1.6"/><path d="M8 5.5v4.5M8 10l-2 4M8 10l2 4M8 6.5l-3 2M8 6.5l3-4"/></symbol>
+  <symbol id="i-crowd" viewBox="0 0 16 16"><circle cx="3.8" cy="5.5" r="1.4"/><circle cx="8" cy="4" r="1.4"/><circle cx="12.2" cy="5.5" r="1.4"/><path d="M1.5 13.5c0-3 1-4.8 2.3-4.8s2.3 1.8 2.3 4.8M5.7 13.5c0-4 1-6.2 2.3-6.2s2.3 2.2 2.3 6.2M9.9 13.5c0-3 1-4.8 2.3-4.8s2.3 1.8 2.3 4.8"/></symbol>
+  <symbol id="i-nodata" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke-dasharray="1.6 2.2"/></symbol>
+  <symbol id="i-walk" viewBox="0 0 16 16"><circle cx="9" cy="2.6" r="1.4"/><path d="M8.5 5l-2 4.2 2.2 2V15M6.5 9.2L4.5 10M8.5 5l2.2 2.6 2 .6M8.7 11.2L6 15"/></symbol>
+  <symbol id="i-bus" viewBox="0 0 16 16"><rect x="3" y="1.8" width="10" height="10.4" rx="2"/><path d="M3 7.5h10M5.2 12.2v2M10.8 12.2v2M5.5 10h.01M10.5 10h.01"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 16 16"><path d="M5 2.5v11M5 13.5l-2.5-2.5M5 13.5L7.5 11M11 13.5v-11M11 2.5L8.5 5M11 2.5L13.5 5"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 16 16"><path d="M8 14.5s4.5-4.2 4.5-7.6a4.5 4.5 0 0 0-9 0c0 3.4 4.5 7.6 4.5 7.6z"/><circle cx="8" cy="6.8" r="1.6"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 16 16"><path d="M2 8h11.5M9.5 4l4 4-4 4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 4.6V8l2.4 1.5"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 16 16"><path d="M2.5 6V2.5H6M13.5 6V2.5H10M2.5 10v3.5H6M13.5 10v3.5H10"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></symbol>
+</svg>
+
+<a class="skip" href="#results" data-i18n="skip">Skip to journeys</a>
+
+<header class="band">
+  <div class="brand">
+    <span class="word">SeatCast</span>
+    <span class="word-hi" lang="hi">सीटकास्ट</span>
+    <span class="city" data-i18n="app.city">Delhi</span>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-planner" aria-controls="panel-planner" aria-selected="true" data-i18n="tab.planner">Plan a trip</button>
+    <button class="tab" role="tab" id="tab-operator" aria-controls="panel-operator" aria-selected="false" tabindex="-1" data-i18n="tab.operator">Operators</button>
+    <button class="tab" role="tab" id="tab-data" aria-controls="panel-data" aria-selected="false" tabindex="-1" data-i18n="tab.data">Data &amp; method</button>
+  </div>
+  <div class="lang" role="group" data-i18n-aria="lang.group" aria-label="Language">
+    <button type="button" data-lang="en" aria-pressed="true" aria-label="English">EN</button>
+    <button type="button" data-lang="hi" lang="hi" aria-pressed="false" aria-label="हिन्दी">हि</button>
+  </div>
+</header>
+
+<main>
+  <section class="planner" id="panel-planner" role="tabpanel" aria-labelledby="tab-planner">
+    <div class="side">
+      <h1 class="sr-only" data-i18n="tab.planner">Plan a trip</h1>
+      <p class="fixture" id="fixture" hidden data-i18n="fixture.banner"></p>
+
+      <form class="form" id="form" novalidate hidden>
+        <div class="ends">
+          <div class="field" data-field="from">
+            <label for="from" data-i18n="from">From</label>
+            <div class="combo">
+              <input id="from" type="text" role="combobox" aria-required="true" aria-describedby="form-msg" aria-autocomplete="list" aria-expanded="false" aria-controls="from-list" autocomplete="off" spellcheck="false" data-i18n-ph="stop.placeholder">
+              <ul class="listbox" id="from-list" role="listbox" data-i18n-aria="from" hidden></ul>
+            </div>
+            <button type="button" class="pick" data-pick="from"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg><span data-i18n="pick_on_map">Pick on map</span></button>
+          </div>
+          <button type="button" class="swap" id="swap" data-i18n-aria="swap" data-i18n-title="swap"><svg class="ic" aria-hidden="true"><use href="#i-swap"/></svg></button>
+          <div class="field" data-field="to">
+            <label for="to" data-i18n="to">To</label>
+            <div class="combo">
+              <input id="to" type="text" role="combobox" aria-required="true" aria-describedby="form-msg" aria-autocomplete="list" aria-expanded="false" aria-controls="to-list" autocomplete="off" spellcheck="false" data-i18n-ph="stop.placeholder">
+              <ul class="listbox" id="to-list" role="listbox" data-i18n-aria="to" hidden></ul>
+            </div>
+            <button type="button" class="pick" data-pick="to"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg><span data-i18n="pick_on_map">Pick on map</span></button>
+          </div>
+        </div>
+        <div class="when">
+          <div class="field">
+            <label for="daytype" data-i18n="daytype">Day</label>
+            <select id="daytype">
+              <option value="weekday" data-i18n="daytype.weekday">Weekday</option>
+              <option value="saturday" data-i18n="daytype.saturday">Saturday</option>
+              <option value="sunday" data-i18n="daytype.sunday">Sunday or holiday</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="time" data-i18n="leave_at">Leave at</label>
+            <input id="time" type="time" step="300" value="18:00" required>
+          </div>
+          <button class="go" type="submit" data-i18n="search">Search</button>
+        </div>
+        <p class="form-msg" id="form-msg" role="alert"></p>
+      </form>
+
+      <div class="enquiry" id="enquiry" hidden>
+        <p class="enq-text"><span class="sr-only" data-i18n="enquiry.label">Your search</span>
+          <span class="od" id="enq-od"></span>
+          <span class="when-line" id="enq-when"></span>
+        </p>
+        <button type="button" class="edit" id="edit" data-i18n="edit">Edit</button>
+      </div>
+
+      <fieldset class="pref" id="pref">
+        <legend class="sr-only" data-i18n="pref.label">Sort by</legend>
+        <label><input type="radio" name="pref" value="fastest" checked><span data-i18n="pref.fastest">Fastest</span></label>
+        <label><input type="radio" name="pref" value="comfort"><span data-i18n="pref.comfort">Most comfortable</span></label>
+      </fieldset>
+
+      <p class="sr-only" id="status" role="status" aria-live="polite"></p>
+      <div class="results" id="results" tabindex="-1"></div>
+      <p class="note" data-i18n="data_note"></p>
+    </div>
+
+    <div class="mapwrap" id="mapwrap">
+      <div class="map" id="map" role="region" data-i18n-aria="map.label" aria-label="Map of the selected journey"></div>
+      <div class="legend" id="legend"></div>
+      <button type="button" class="map-size" id="map-size" aria-controls="mapwrap" aria-expanded="false"><svg class="ic" aria-hidden="true"><use href="#i-expand"/></svg><span></span></button>
+      <p class="map-msg" id="map-msg" hidden></p>
+    </div>
+  </section>
+
+  <section class="shell" id="panel-operator" role="tabpanel" aria-labelledby="tab-operator" hidden>
+    <h1 class="title" data-i18n="operator.title"></h1>
+    <p data-i18n="operator.shell"></p>
+  </section>
+
+  <section class="shell" id="panel-data" role="tabpanel" aria-labelledby="tab-data" hidden>
+    <h1 class="title" data-i18n="data.title"></h1>
+    <p data-i18n="data.shell"></p>
+  </section>
+</main>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" defer></script>
+<script src="i18n.js" defer></script>
+<script src="data.js" defer></script>
+<script src="app.js" defer></script>
+</body>
+</html>

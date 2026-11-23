@@ -1,0 +1,48 @@
+{
+  "_synthetic": "SYNTHETIC UI FIXTURE: limited-data and schedule-gap states. Numbers are made up.",
+  "query": {
+    "from": "Anand Vihar ISBT", "to": "Connaught Place", "depart": "2026-10-28T23:00", "daytype": "weekday", "pref": "balanced",
+    "from_point": {"name": "Anand Vihar ISBT", "lat": 28.6492, "lon": 77.3141},
+    "to_point": {"name": "Connaught Place", "lat": 28.6328, "lon": 77.2195}
+  },
+  "options": [
+    {
+      "id": "l1", "label": "fastest",
+      "depart": "23:04", "arrive": "23:41", "total_min": 37, "transfers": 0, "generalised_min": 55.0,
+      "legs": [
+        {"mode": "walk", "to": "Anand Vihar ISBT", "min": 3},
+        {"mode": "bus", "route": "740", "dir": "UP", "headsign": "Connaught Place", "board": "Anand Vihar ISBT", "alight": "Connaught Place",
+         "depart": "23:07", "arrive": "23:38", "ride_min": 31,
+         "crowding": {"level": "NO_DATA_AVAILABLE", "p_seat": null, "stand_min": null, "crowded_between": null,
+                      "text": "Limited data", "confidence": "low", "n": 3, "range": null, "reason": "low_n"},
+         "stops": [
+           {"name": "Anand Vihar ISBT", "lat": 28.6469, "lon": 77.3159},
+           {"name": "Laxmi Nagar", "lat": 28.6305, "lon": 77.2775},
+           {"name": "ITO", "lat": 28.6286, "lon": 77.2410},
+           {"name": "Connaught Place", "lat": 28.6315, "lon": 77.2167}
+         ],
+         "segments": [
+           {"from": "Anand Vihar ISBT", "to": "Laxmi Nagar", "min": 12, "level": "NO_DATA_AVAILABLE", "p_seat": null, "n": 3},
+           {"from": "Laxmi Nagar", "to": "ITO", "min": 10, "level": "NO_DATA_AVAILABLE", "p_seat": null, "n": 2},
+           {"from": "ITO", "to": "Connaught Place", "min": 9, "level": "MANY_SEATS_AVAILABLE", "p_seat": 0.95, "n": 6}
+         ]},
+        {"mode": "walk", "to": "destination", "min": 3}
+      ]
+    },
+    {
+      "id": "l2", "label": "comfort",
+      "depart": "23:15", "arrive": "23:58", "total_min": 43, "transfers": 0, "generalised_min": 60.0,
+      "legs": [
+        {"mode": "walk", "to": "Anand Vihar ISBT", "min": 3},
+        {"mode": "bus", "route": "623A", "dir": "DOWN", "board": "Anand Vihar ISBT", "alight": "Pragati Maidan",
+         "depart": "23:18", "ride_min": 37,
+         "crowding": {"level": "NO_DATA_AVAILABLE", "p_seat": null, "stand_min": null, "crowded_between": null,
+                      "text": "Limited data", "confidence": "low", "n": 0, "range": null, "reason": "schedule_gap"}},
+        {"mode": "walk", "to": "destination", "min": 3}
+      ]
+    }
+  ],
+  "suggestions": [],
+  "quiet_hour": {"time": "11:00", "total_min": 34, "level": "MANY_SEATS_AVAILABLE"},
+  "notes": ["SYNTHETIC FIXTURE: not computed from tickets."]
+}

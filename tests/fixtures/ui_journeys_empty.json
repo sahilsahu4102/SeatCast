@@ -1,0 +1,8 @@
+{
+  "_synthetic": "SYNTHETIC UI FIXTURE: no-route state.",
+  "query": {"from": "Anand Vihar ISBT", "to": "Connaught Place", "depart": "2026-10-28T18:00", "daytype": "weekday", "pref": "balanced"},
+  "options": [],
+  "suggestions": [],
+  "quiet_hour": null,
+  "notes": []
+}

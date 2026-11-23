@@ -1,0 +1,19 @@
+[
+  {"stop_id": "SYN-AV", "name": "Anand Vihar ISBT", "lat": 28.6469, "lon": 77.3159},
+  {"stop_id": "SYN-KS", "name": "Kaushambi", "lat": 28.6458, "lon": 77.3240},
+  {"stop_id": "SYN-KC", "name": "Karkarduma Court", "lat": 28.6489, "lon": 77.3051},
+  {"stop_id": "SYN-PV", "name": "Preet Vihar", "lat": 28.6417, "lon": 77.2953},
+  {"stop_id": "SYN-NV", "name": "Nirman Vihar", "lat": 28.6366, "lon": 77.2867},
+  {"stop_id": "SYN-LN", "name": "Laxmi Nagar", "lat": 28.6305, "lon": 77.2775},
+  {"stop_id": "SYN-GN", "name": "Ganesh Nagar", "lat": 28.6290, "lon": 77.3010},
+  {"stop_id": "SYN-MV", "name": "Mayur Vihar Ph-1", "lat": 28.6044, "lon": 77.2895},
+  {"stop_id": "SYN-AK", "name": "Akshardham", "lat": 28.6180, "lon": 77.2790},
+  {"stop_id": "SYN-PM", "name": "Pragati Maidan", "lat": 28.6233, "lon": 77.2430},
+  {"stop_id": "SYN-ITO", "name": "ITO", "lat": 28.6286, "lon": 77.2410},
+  {"stop_id": "SYN-MH", "name": "Mandi House", "lat": 28.6258, "lon": 77.2341},
+  {"stop_id": "SYN-BR", "name": "Barakhamba Road", "lat": 28.6298, "lon": 77.2244},
+  {"stop_id": "SYN-CP", "name": "Connaught Place", "lat": 28.6315, "lon": 77.2167},
+  {"stop_id": "SYN-KG", "name": "Kashmere Gate ISBT", "lat": 28.6676, "lon": 77.2280},
+  {"stop_id": "SYN-NP", "name": "Nehru Place", "lat": 28.5492, "lon": 77.2513},
+  {"stop_id": "SYN-GTB", "name": "Gtb Nagar / Gtb Nagar Metro Station", "lat": 28.6980, "lon": 77.2065}
+]
