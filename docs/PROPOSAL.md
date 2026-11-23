@@ -19,14 +19,14 @@ We tested the ticket file before modelling it:
 ## 3. Approach
 
 1. **Match tickets to the network.** Route codes and messy stop names are matched to the official static GTFS: 6,862 stops, 2,574 routes, 80,357 trips. The matcher works through exact names, guarded fuzzy matching, and finally the same name found anywhere in the city and snapped to the route's nearest stop within 300 m.
-   - Results by passengers: **98.35% route matched, 93.14% both stops, 99.78% in travel order.**
+   - Results by passengers: **98.35% route matched, 93.89% both stops, 99.78% in travel order.**
    - Fares agree with the matched distances slab by slab, which is an independent check.
 2. **Pooled segment flows.** Each ticket rides the segments between its stops, timed by the schedule.
    - Half-matched tickets get their missing end from riders who boarded at the same stop and hour.
    - In total **97.6%** of digital passengers are represented.
 3. **Load per bus**, L = E · f / N.
    - f is the mean daily digital flow on a stretch in a 30-minute slot.
-   - N is the number of buses that run through it.
+   - N is the number of buses that actually run through it, from GPS (§4), not the timetable.
    - E scales digital riders to all riders: **44.6, with a range of 31.2–45.9**.
 4. **From load to a seat.** Sampling, day-to-day and bus-to-bus variation combine into a probability of getting a seat. Commuters see it as **"seats on 7 of 10 trips"**, plus a GTFS-Realtime crowding level and a confidence badge. Stretches with fewer than 5 sampled riders say "limited data" and never show a number.
 5. **Planner.** A RAPTOR router on the static GTFS returns up to 3 options, ranked by time or by a crowding-weighted time. It also gives "leave 20 minutes later → likely seat" and "board one stop earlier" suggestions, and a quiet-hour comparison.
@@ -38,7 +38,9 @@ The October bus GPS feed lets us check our two weakest assumptions independently
 
 - **Ticket time is boarding time, and the stop matching is right.** When a ticket was bought, the bus was a median of **218 m** from the boarding stop we matched, against **4.3 km** from the alighting stop.
 - **The ticket file covers DTC and cluster buses.** 99.3% of ticket passengers' buses appear in the GPS feed, which covers cluster routes too, so we expand to DTC plus cluster ridership.
-- **Scheduled trips are what actually ran.** We compare observed trips with scheduled ones by route, day type and hour band, and use the result to correct N.
+- **Far fewer buses run than the timetable says.** GPS bus-km over all 31 days is **62%** of timetable bus-km on weekdays (63% Saturday, 66% Sunday), and a count of buses passing a stop agrees.
+  - Counting GPS trip ids would have shown the opposite, because the feed splits journeys into fragments; we test for this.
+  - N uses the observed service. That gives about **639 riders per bus per day**, near DTC's reported ~756.
 - **Stop names the matcher can't settle.** Where a name fits two stops, the bus's position at purchase picks the right one.
 
 ## 5. Data used
