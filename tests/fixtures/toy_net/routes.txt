@@ -1,0 +1,7 @@
+agency_id,route_id,route_long_name,route_short_name,route_desc,route_type
+DTC,R1,R1UP,R1UP,slow direct A-D,3
+DTC,R2,R2UP,R2UP,fast A-B,3
+DTC,R3,R3UP,R3UP,fast B-D weekdays,3
+DTC,R4,R4UP,R4UP,C-E,3
+DTC,R5,R5UP,R5UP,F-G,3
+DTC,R7,R7UP,R7UP,overtaking X-Y,3
