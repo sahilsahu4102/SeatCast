@@ -170,7 +170,7 @@ def test_cells():
 def test_load_sanity():
     m = json.loads(COV.read_text(encoding='utf-8'))['load']
     assert m['represent']['represented_pct'] > 95  # placed + imputed + scaled digital passengers
-    assert m['absurd_pct_of_cells_with_service_and_n'] < 2  # G3 regression floor; target < 1
+    assert m['censored_pct_of_cells'] < 5  # regression floor; cells above censor_factor x total are clipped
     assert m['schedule_gap_pax_pct'] < 5
 
 

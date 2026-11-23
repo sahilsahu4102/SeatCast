@@ -138,18 +138,20 @@ def model(c, E):
     k = cfg()
     c['N'] = c['N'].fillna(0).astype(float)
     run2, n = k['run_cv'] ** 2, k['min_cell_n']
-    N = c['N'].where(c['N'] > 0)
+    N = c['N_obs'].where(c['N'] > 0)
+    top = k['censor_factor'] * c['total']
+    c['censored'] = (c['N'] > 0) & (c['n'] >= n) & (E['central'] * c['calib'] * c['f'] / N > top)
     for x, e in [('L_low', E['low']), ('L', E['central']), ('L_high', E['high'])]:
-        c[x] = e * c['f'] / N
+        c[x] = np.minimum(e * c['calib'] * c['f'] / N, top)  # censored: well sampled, magnitude uncertain
     c['LF'] = c['L'] / c['seats']
     c['cv'] = np.sqrt(1 / c['n'].clip(lower=1) + c['cv_day'] ** 2 + run2)
     c['p_seat'] = p_seat(c['L'].fillna(0), c['seats'], c['cv'])
     for x in ['low', '', 'high']:
         c['level' + (x and '_' + x)] = level(c['L' + (x and '_' + x)], c['seats'], c['total'])
-    c['flag'] = np.select([c['N'] == 0, c['n'] < n, c['L'] > 3 * c['total']], ['gap', 'low_n', 'absurd'], None)
+    c['flag'] = np.select([c['N'] == 0, c['n'] < n], ['gap', 'low_n'], None)
     q = k['confidence']
-    c['confidence'] = np.select([(c['n'] >= q['high_n']) & (c['rho'] >= q['high_rho']), c['n'] >= q['med_n']],
-                                ['high', 'medium'], 'low')
+    c['confidence'] = np.select([c['censored'], (c['n'] >= q['high_n']) & (c['rho'] >= q['high_rho']),
+                                 c['n'] >= q['med_n']], ['low', 'high', 'medium'], 'low')
     bad = c['flag'].notna()
     c.loc[bad, ['L_low', 'L', 'L_high', 'LF', 'p_seat']] = np.nan
     c.loc[bad, ['level_low', 'level_high', 'confidence']] = None
@@ -157,30 +159,77 @@ def model(c, E):
     return c
 
 
-def hourly(con, E):
-    # route x segment x hour x day type: all sampled flow against all scheduled buses in the hour
+def ratios(use):
+    # GPS delivery ratio (observed / scheduled) per route, day type and hour band; None = timetable as is
+    f = WORK / 'service_scale.csv'
+    if not use or not f.exists():
+        return None
+    r = pd.read_csv(f, dtype={'route_id': str})[['route_id', 'daytype', 'band', 'ratio']]
+    return r.assign(ratio=r['ratio'].clip(*cfg()['gps']['ratio_clamp']))
+
+
+def observe(c, r, h):
+    # N_obs = N x ratio of the route, day type and band of hour column h; no row means ratio 1
+    if r is None:
+        return c.assign(N_obs=c['N'], ratio=np.nan)
+    b = np.array(cfg()['gps']['bands'][:-1])
+    c = c.assign(band=b[np.searchsorted(b, c[h].to_numpy(), 'right') - 1])
+    c = c.merge(r, on=['route_id', 'daytype', 'band'], how='left').drop(columns='band')
+    return c.assign(N_obs=c['N'] * c['ratio'].fillna(1))
+
+
+def calibrate(c, D, E, k):
+    # per-route E multiplier m = min(u, h). h caps the route's q-quantile load at crush x total; the common u >= 1
+    # lifts the rest so riders on judged routes stay sum(D). If even every route at its cap can't carry them, u = 1
+    # (cap only) and the shortfall is reported. Routes with no cells to judge keep m = 1. c: route_id, f, N_obs, total
+    lim = c.groupby('route_id')['total'].first() * k['crush_factor']
+    q = (E * c['f'] / c['N_obs']).groupby(c['route_id']).quantile(k['quantile'])
+    h = (lim / q).reindex(D.index)
+    ok = h.notna()
+
+    def carried(u):
+        return (np.minimum(u, h[ok]) * D[ok]).sum()
+    u, need = 1.0, D[ok].sum()
+    if carried(1.0) < need <= carried(h.max()):
+        lo, hi = 1.0, h.max()
+        for _ in range(60):
+            u = (lo + hi) / 2
+            lo, hi = (u, hi) if carried(u) < need else (lo, u)
+        u = hi
+    return np.minimum(u, h).fillna(1.0), (h < u).fillna(False)
+
+
+def hourly(con, E, r, m):
+    # route x segment x hour x day type: all sampled flow against all observed buses in the hour
     h = 60 // cfg()['slot_min']
     x = con.execute(HOURLY, {'h': h}).df()
     s = con.execute('SELECT route_id, s0, s1, daytype, CAST(slot // $h AS INT) h, SUM(n) N, '
                     'SUM(n * sec) / SUM(n) / 60 seg_min FROM sv GROUP BY ALL', {'h': h}).df()
-    x = x.merge(s, on=['route_id', 's0', 's1', 'daytype', 'h'])
-    x['L'] = E * x['f'] / x['N']
+    x = observe(x.merge(s, on=['route_id', 's0', 's1', 'daytype', 'h']), r, 'h')
+    x['E'] = E * m.reindex(x['route_id']).fillna(1).to_numpy()
+    x['L'] = x['E'] * x['f'] / x['N_obs']
     return x
 
 
-def operator(x, cap, names, E):
+def censor(x):
+    return x.assign(L=np.minimum(x['L'], cfg()['censor_factor'] * x['total']))
+
+
+def operator(x, cap, names):
     k = cfg()
     x = x.merge(cap, on='route_id')
-    x = x[(x['n'] >= k['min_cell_n']) & (x['L'] <= 3 * x['total'])].copy()
-    x['st'] = x['N'] * (x['L'] - x['seats']).clip(lower=0) * x['seg_min']
-    x['st1'] = (x['N'] + 1) * (x['L'] * x['N'] / (x['N'] + 1) - x['seats']).clip(lower=0) * x['seg_min']
+    x = censor(x[x['n'] >= k['min_cell_n']])
+    N = x['N_obs']
+    x['st'] = N * (x['L'] - x['seats']).clip(lower=0) * x['seg_min']
+    x['st1'] = (N + 1) * (x['L'] * N / (N + 1) - x['seats']).clip(lower=0) * x['seg_min']
     g = ['route_id', 'daytype', 'h']
     m = x.loc[x.groupby(g)['f'].idxmax()].set_index(g)
     o = x.groupby(g)[['st', 'st1']].sum()
-    o['P_max'] = E * m['f']
-    o['F_sched'] = m['N']
+    o['P_max'] = m['E'] * m['f']
+    o['F_sched'], o['F_obs'] = m['N'], m['N_obs']
     o['F_req'] = np.ceil(o['P_max'] / (k['desired_load_factor'] * m['total'])).astype(int)
     o['gap'] = (o['F_req'] - o['F_sched']).clip(lower=0)
+    o['gap_obs'] = (o['F_req'] - o['F_obs']).clip(lower=0)
     o['standee_min'] = o['st']
     o['plus1_benefit'] = o['st'] - o['st1']
     o['L_max'], o['LF_max'], o['n_max'] = m['L'], m['L'] / m['seats'], m['n']
@@ -242,10 +291,10 @@ def cutter(s, sh, step=25):
     return cut
 
 
-def read(con, name, f, tries=5):
+def read(con, name, f, cols='*', tries=5):
     for i in range(tries):
         try:
-            con.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM read_parquet('{f.as_posix()}')")
+            con.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT {cols} FROM read_parquet('{f.as_posix()}')")
             return
         except duckdb.Error:
             if i == tries - 1:
@@ -253,12 +302,18 @@ def read(con, name, f, tries=5):
             time.sleep(10)
 
 
-def run():
+def run(gps=None, cal=None, write=True):
     t0 = time.time()
-    con = duckdb.connect()
-    for n, f in [('flows', WORK / 'flows.parquet'), ('od', WORK / 'od.parquet'), ('tickets', WORK / 'tickets.parquet'),
-                 ('seg0', P3 / 'pattern_stops.parquet'), ('pat', P3 / 'patterns.parquet')]:
-        read(con, n, f)
+    k = cfg()
+    gps = k.get('service_from_gps', False) if gps is None else gps
+    cal = k['calib'].get('enabled', False) if cal is None else cal
+    con = duckdb.connect(config={'memory_limit': '4GB', 'threads': 4})
+    for n, f, cols in [('flows', WORK / 'flows.parquet', '*'), ('od', WORK / 'od.parquet', 'route_id, series, ac, pc'),
+                       ('tickets', WORK / 'tickets.parquet', 'pc, date'),
+                       ('seg0', P3 / 'pattern_stops.parquet', 'pattern_id, k, stop_id, lat, lon, dist_m'),
+                       ('pat', P3 / 'patterns.parquet', '*'), ('sv', WORK / 'service.parquet', '*'),
+                       ('scale', WORK / 'scale.parquet', '*')]:
+        read(con, n, f, cols)
     con.execute('CREATE TABLE seg AS SELECT pattern_id, CAST(k AS INT) k, stop_id s0, '
                 'lead(stop_id) OVER (PARTITION BY pattern_id ORDER BY k) s1 FROM seg0')
     con.execute('DELETE FROM seg WHERE s1 IS NULL')
@@ -269,22 +324,36 @@ def run():
     g = gtfs.load(w=P3)
     names = g['stops'].set_index('stop_id')['stop_name']
     rm = meta(g).set_index('route_id')
-    read(con, 'sv', WORK / 'service.parquet')
     cap = capacity(con)
     pairs = con.sql(PAIRS).df()
+    con.register('pairs', pairs)
+    r = ratios(gps)
     c = stats(con)
     c = c.merge(con.execute(SVW, win()).df(), on=['route_id', 's0', 's1', 'slot', 'daytype'], how='left')
+    c['N'] = c['N'].fillna(0).astype(float)
+    c = observe(c.assign(hr=c['slot'] * k['slot_min'] // 60), r, 'hr').drop(columns='hr')
     c = c.merge(cap, on='route_id', how='left').merge(rho(con), on='route_id', how='left')
+    Dr = con.sql(f"SELECT route_id, SUM(pax) / {nd['nd'].sum()} d FROM scale WHERE route_id IS NOT NULL "
+                 'GROUP BY 1').df().set_index('route_id')['d']
+    m, fixed = pd.Series(1.0, index=Dr.index), pd.Series(False, index=Dr.index)
+    if cal:
+        m, fixed = calibrate(c[(c['n'] >= k['min_cell_n']) & (c['N'] > 0)], Dr, E['central'], k['calib'])
+    c['calib'] = m.reindex(c['route_id']).fillna(1).to_numpy()
     c = model(c, E)
     c = c.merge(pairs, on=['route_id', 's0', 's1'], how='left').merge(rm[['base', 'dir']], left_on='route_id',
                                                                       right_index=True, how='left')
     c['from_name'], c['to_name'] = c['s0'].map(names), c['s1'].map(names)
     c = c.rename(columns={'s0': 'from_stop', 's1': 'to_stop'})
+    x = hourly(con, E['central'], r, m)
+    op = operator(x, cap, names).merge(rm[['route', 'base', 'dir']], left_on='route_id', right_index=True, how='left')
+    cov = report(c, op, x, D, E, nd, bad, g)
+    cov['service'] = service_note(c, r, con, x)
+    cov['calib'] = calib_note(m, fixed, Dr, E['central'], rm, cal)
+    cov['calib_analysis'] = feasibility(c[(c['n'] >= k['min_cell_n']) & (c['N'] > 0)], Dr, E['central'])
+    if not write:
+        return c, op, cov
     OUT.mkdir(parents=True, exist_ok=True)
     public(c).to_parquet(OUT / 'cells.parquet', index=False, compression='zstd')
-    x = hourly(con, E['central'])
-    op = operator(x, cap, names, E['central']).merge(rm[['route', 'base', 'dir']], left_on='route_id',
-                                                       right_index=True, how='left')
     op.to_parquet(OUT / 'operator.parquet', index=False)
     prof = profiles(x, pairs, cap.set_index('route_id'), rm, names)
     (OUT / 'route_profiles.json').write_text(json.dumps(prof, separators=(',', ':')), encoding='utf-8')
@@ -294,17 +363,78 @@ def run():
     tp = pd.read_parquet(P3 / 'trip_pattern.parquet')
     gj = geometry(used, ps, pat, tp, g)
     (OUT / 'segments.geojson').write_text(json.dumps(gj, separators=(',', ':')), encoding='utf-8')
-    cov = report(c, op, x, D, E, nd, bad, g)
     merge_cov(cov)
     print(json.dumps(cov, indent=2, default=str))
     print(f'load: {time.time() - t0:.0f}s')
 
 
+KM = '''
+SELECT p.route_id, p.s0, p.s1, (b.dist_m - a.dist_m) / 1000 km FROM pairs p
+JOIN seg0 a ON a.pattern_id = p.pattern_id AND a.k = p.k
+JOIN seg0 b ON b.pattern_id = p.pattern_id AND b.k = p.k + 1
+'''
+
+
+def service_note(c, r, con, x):
+    # share of cells / passengers without a GPS ratio; weekday passenger-km per bus-km as a sanity check
+    s = c[c['N'] > 0]
+    d = con.sql(KM).df()
+    h = 60 // cfg()['slot_min']
+    w = x[x['daytype'] == 'weekday'].merge(d, on=['route_id', 's0', 's1'])
+    sv = con.sql(f"SELECT route_id, s0, s1, daytype, CAST(slot // {h} AS INT) h, SUM(n) N FROM sv "
+                 "WHERE daytype = 'weekday' GROUP BY ALL").df()
+    sv = observe(sv, r, 'h').merge(d, on=['route_id', 's0', 's1'])
+    pk, bk = (w['E'] * w['f'] * w['km']).sum(), (sv['N_obs'] * sv['km']).sum()
+    miss = s['ratio'].isna()
+    return {
+        'from_gps': r is not None,
+        'no_ratio_cells_pct': round(100 * miss.mean(), 2) if r is not None else None,
+        'no_ratio_pax_pct': round(100 * s.loc[miss, 'n'].sum() / s['n'].sum(), 2) if r is not None else None,
+        'weekday_bus_km': round(bk),
+        'weekday_bus_km_sched': round((sv['N'] * sv['km']).sum()),
+        'weekday_pax_km': round(pk),
+        'avg_load_per_bus_km': round(pk / bk, 1),
+    }
+
+
+def feasibility(c, D, E):
+    # route-level E cut needed to keep each route's q-quantile load under crush x total (not applied; tech note)
+    out = []
+    for qq in [0.9, 0.95]:
+        q = (E * c['f'] / c['N_obs']).groupby(c['route_id']).quantile(qq)
+        for cr in [1.5, 2.0, 2.5, 3.0]:
+            h = (cr * c.groupby('route_id')['total'].first() / q).reindex(D.index).dropna()
+            d = D[h.index]
+            out.append({'quantile': qq, 'crush': cr, 'routes_over_cap': int((h < 1).sum()),
+                        'routes_over_cap_pax_pct': round(100 * d[h < 1].sum() / D.sum(), 1),
+                        'carried_cut_only_pct': round(100 * (np.minimum(1, h) * d).sum() / d.sum(), 1),
+                        'max_carried_pct': round(100 * (h * d).sum() / d.sum(), 1)})
+    return out
+
+
+def calib_note(m, fixed, D, E, rm, on):
+    if not on:
+        return {'on': False}
+    a = 1 / m[fixed]
+    return {
+        'on': True,
+        'routes_capped': int(fixed.sum()),
+        'capped_digital_pax_pct': round(100 * D[fixed].sum() / D.sum(), 2),
+        'app_share_multiple_q10_50_90_max': [round(v, 2) for v in a.quantile([.1, .5, .9, 1])] if len(a) else [],
+        'E_uncapped': round(E * m[~fixed].max(), 2) if (~fixed).any() else None,
+        'riders_carried_pct': round(100 * (m * D).sum() / D.sum(), 2),
+        'feasible': bool(round((m * D).sum() / D.sum(), 6) >= 1),
+        'top10_multiple': [dict(route_id=i, route=rm['route'].get(i), multiple=round(v, 2), E=round(E * m[i], 2),
+                                digital_pax_day=round(D[i], 1)) for i, v in a.nlargest(10).items()],
+    }
+
+
 def public(c):
     # cells under min_cell_n leave the public table: an absent cell means limited data
     c = c[c['n'] >= cfg()['min_cell_n']].sort_values(['route_id', 'daytype', 'k', 'slot'])
-    f = c.select_dtypes('float64').columns
-    return c.astype(dict.fromkeys(f, 'float32')).rename(columns={'N': 'N_sched'})  # DuckDB folds N into n
+    c = c.drop(columns='ratio')
+    c = c.astype(dict.fromkeys(c.select_dtypes('float64').columns, 'float32'))
+    return c.rename(columns={'N': 'N_sched'})  # DuckDB folds N into n
 
 
 def merge_cov(load):
@@ -327,7 +457,7 @@ def report(c, op, x, D, E, nd, bad, g):
     am, pm = k['periods']['am'], k['periods']['pm']
     top = op[op['n_max'] >= k['confidence']['med_n']].nlargest(10, 'standee_min')
     peak = top['hour'].between(am[0], am[1] - 1) | top['hour'].between(pm[0], pm[1] - 1)
-    ab = c[c['flag'] == 'absurd'].groupby(['route_id', 'base', 'dir'])['n'].agg(['size', 'sum']).nlargest(10, 'size')
+    ab = c[c['censored']].groupby(['route_id', 'base', 'dir'])['n'].agg(['size', 'sum']).nlargest(10, 'size')
     one = g['calendar'] is not None and len(g['calendar']) == 1
     return {
         'D_daily': round(D, 1),
@@ -343,8 +473,9 @@ def report(c, op, x, D, E, nd, bad, g):
         'cells_publishable': int(len(ok)),
         'schedule_gap_cells': int((c['flag'] == 'gap').sum()),
         'schedule_gap_pax_pct': round(100 * c.loc[c['flag'] == 'gap', 'n'].sum() / c['n'].sum(), 2),
-        'absurd_pct_of_cells_with_service_and_n': round(100 * (pos['flag'] == 'absurd').mean(), 3),
-        'absurd_routes_top': [dict(route_id=a, base=b, dir=d, cells=int(r['size']), n=round(r['sum'], 1))
+        'censored_pct_of_cells': round(100 * pos['censored'].mean(), 3),
+        'absurd_pct_of_cells_with_service_and_n': round(100 * pos['censored'].mean(), 3),  # same as censored_pct
+        'censored_routes_top': [dict(route_id=a, base=b, dir=d, cells=int(r['size']), n=round(r['sum'], 1))
                               for (a, b, d), r in ab.iterrows()],
         'LF_quantiles_publishable': dict(zip(['p10', 'p25', 'p50', 'p75', 'p90', 'p99'],
                                              [round(v, 3) for v in lf.quantile([.1, .25, .5, .75, .9, .99])])),

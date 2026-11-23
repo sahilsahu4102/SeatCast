@@ -47,10 +47,10 @@ ON l.lvl = p.lvl AND l.pattern_id = p.pattern_id AND l.e = p.e AND l.k = p.k
 # every digital passenger on a matched route code: placed + imputed, scaled up to the code's total
 TK = '''
 CREATE TABLE rep AS
-SELECT tid, SUM(w) FILTER (WHERE NOT imp) wp, SUM(w) FILTER (WHERE imp) wi FROM (
-  SELECT tid, pc w, false imp FROM od UNION ALL SELECT tid, w, true FROM imp) GROUP BY tid;
+SELECT tid, any_value(route_id) route_id, SUM(w) FILTER (WHERE NOT imp) wp, SUM(w) FILTER (WHERE imp) wi FROM (
+  SELECT tid, route_id, pc w, false imp FROM od UNION ALL SELECT tid, route_id, w, true FROM imp) GROUP BY tid;
 CREATE TABLE scale AS
-SELECT t.route_raw, SUM(t.pc) pax, coalesce(SUM(r.wp), 0) placed, coalesce(SUM(r.wi), 0) imputed,
+SELECT t.route_raw, any_value(r.route_id) route_id, SUM(t.pc) pax, coalesce(SUM(r.wp), 0) placed, coalesce(SUM(r.wi), 0) imputed,
        SUM(t.pc) / nullif(coalesce(SUM(r.wp), 0) + coalesce(SUM(r.wi), 0), 0) scale
 FROM tickets t LEFT JOIN rep r USING (tid) GROUP BY 1;
 CREATE TABLE tk AS
@@ -96,11 +96,11 @@ def seg(con, ps):
     con.execute('DELETE FROM seg WHERE s1 IS NULL')
 
 
-def read(con, name, f, tries=5):
+def read(con, name, f, cols='*', tries=5):
     # P2 may be rewriting its outputs; retry a failed read
     for i in range(tries):
         try:
-            con.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM read_parquet('{f.as_posix()}')")
+            con.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT {cols} FROM read_parquet('{f.as_posix()}')")
             return
         except duckdb.Error:
             if i == tries - 1:
@@ -111,9 +111,9 @@ def read(con, name, f, tries=5):
 def run():
     t0 = time.time()
     service.run()
-    con = duckdb.connect()
-    read(con, 'od', WORK / 'od.parquet')
-    read(con, 'tickets', WORK / 'tickets.parquet')
+    con = duckdb.connect(config={'memory_limit': '4GB', 'threads': 4})
+    read(con, 'od', WORK / 'od.parquet', 'tid, route_id, pattern_id, b, a, pc, ts, date, daytype, week')
+    read(con, 'tickets', WORK / 'tickets.parquet', 'tid, pc, route_raw')
     read(con, 'off', WORK / 'offsets.parquet')
     read(con, 'ps', P3 / 'pattern_stops.parquet')
     seg(con, con.table('ps').df())
