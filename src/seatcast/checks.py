@@ -573,3 +573,311 @@ def note():
     out = fill(src, v)
     (ROOT / 'docs' / 'TECH_NOTE.md').write_text(out, encoding='utf-8')
     print('note: docs/TECH_NOTE.md written')
+
+
+# ---------- docs/CHECKS.md and charts: every number comes from the outputs ----------
+
+IMG = ROOT / 'docs' / 'img'
+DTC = {'weekday': '#2a78d6', 'saturday': '#eb6834', 'sunday': '#1baf7a'}
+INK, GRID = '#222222', '#dddddd'
+CELLS, TIX = f"'{(OUT / 'cells.parquet').as_posix()}'", f"'{(WORK / 'tickets.parquet').as_posix()}'"
+DAILY = f"'{(WORK / 'daily.csv').as_posix()}'"
+
+
+def q1(p):
+    return f"'{p.as_posix()}'"
+
+
+def sql(con, q):
+    return con.sql(q).df()
+
+
+def axes(title, xl, yl):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(9, 4.5), dpi=100)
+    ax.set_title(title, loc='left', fontsize=11, color=INK)
+    ax.set_xlabel(xl, color=INK)
+    ax.set_ylabel(yl, color=INK)
+    ax.grid(color=GRID, lw=0.5)
+    ax.set_axisbelow(True)
+    for s in ('top', 'right'):
+        ax.spines[s].set_visible(False)
+    for s in ('left', 'bottom'):
+        ax.spines[s].set_color('#999999')
+    ax.tick_params(colors=INK, labelsize=9)
+    return fig, ax
+
+
+def save(fig, name):
+    import matplotlib.pyplot as plt
+    IMG.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(IMG / name)
+    plt.close(fig)
+
+
+def img(alt, name):
+    return f'![{alt}](img/{name})'
+
+
+def hourly(con, nd):
+    # weekday mean passengers per hour from the ticket file, flagged days excluded
+    h = sql(con, f'''SELECT slot // 2 h, sum(pc) / {nd} pax FROM {TIX} WHERE daytype = 'weekday'
+        AND date NOT IN (SELECT CAST(date AS DATE) FROM read_csv({DAILY}) WHERE flag) GROUP BY 1 ORDER BY 1''')
+    return h.set_index('h')['pax'].reindex(range(24), fill_value=0)
+
+
+def hourly_chart(h, pk):
+    fig, ax = axes('Digital passengers per weekday hour (mean of weekdays, IST)', 'hour of day', 'passengers per day')
+    ax.plot(h.index, h.values, color=DTC['weekday'], lw=2, label='weekday')
+    for x in pk:
+        ax.annotate(f'{x}:00', (x, h[x]), textcoords='offset points', xytext=(0, 7), ha='center', fontsize=9, color=INK)
+    ax.set_xticks(range(0, 24, 2))
+    ax.legend(frameon=False)
+    save(fig, 'weekday_hourly.png')
+
+
+def daily_chart(d):
+    fig, ax = axes('Digital passengers per day, October 2026, by day type', 'date', 'passengers per day')
+    for t, c in DTC.items():
+        x = d[d['daytype'] == t]
+        ax.bar(pd.to_datetime(x['date']), x['pax'], color=c, width=0.7, label=t)
+    ax.set_xticks(pd.to_datetime(d['date'][::3]))
+    ax.set_xticklabels([str(x)[5:] for x in d['date'][::3]], fontsize=8)
+    ax.set_ylim(0, d['pax'].max() * 1.15)
+    ax.legend(frameon=False, ncol=3, loc='upper left')
+    save(fig, 'daily_totals.png')
+
+
+def rho_chart(r, hi):
+    fig, ax = axes('Week-to-week Spearman rho per route-direction', 'rho', 'route-directions')
+    ax.hist(r['rho'], bins=30, range=(-0.2, 1.0), color=DTC['weekday'], edgecolor='white', lw=0.5)
+    ax.axvline(hi, color=INK, lw=1, ls='--')
+    ax.annotate(f'high-confidence threshold {hi}', (hi, ax.get_ylim()[1] * 0.95), xytext=(-5, 0), textcoords='offset points',
+                ha='right', fontsize=9, color=INK)
+    save(fig, 'rho_hist.png')
+
+
+def lf_chart(b):
+    fig, ax = axes('Load factor of publishable cells (mean load per bus / seats)', 'load factor', 'share of cells %')
+    ax.bar(b['lo'], b['pct'], width=b['w'] * 0.9, align='edge', color=DTC['weekday'])
+    ax.axvline(1.0, color=INK, lw=1, ls='--')
+    ax.annotate('1.0 = all seats taken', (1.0, ax.get_ylim()[1] * 0.95), xytext=(5, 0), textcoords='offset points', fontsize=9, color=INK)
+    ax.annotate(f'last bar = {b["lo"].max():.0f} and above', (b['lo'].max(), ax.get_ylim()[1] * 0.3), xytext=(-5, 0),
+                textcoords='offset points', ha='right', fontsize=9, color=INK)
+    save(fig, 'lf_hist.png')
+
+
+def lfhist(con, w, top):
+    # bins of width w up to `top`; the last bin collects everything above
+    b = sql(con, f'''SELECT least(floor(LF / {w}), {int(top / w)}) * {w} lo, count(*) c FROM {CELLS} WHERE flag IS NULL GROUP BY 1 ORDER BY 1''')
+    return b.assign(pct=100 * b['c'] / b['c'].sum(), w=w)
+
+
+def corridors(con, n):
+    q = f'''SELECT base || dir route, from_name, to_name, sum(f) flow, sum(n) n FROM {CELLS} WHERE daytype = 'weekday' AND flag IS NULL
+        GROUP BY route_id, base, dir, from_stop, to_stop, from_name, to_name ORDER BY flow DESC LIMIT {n}'''
+    return table(sql(con, q).to_dict('records'), [('route', 'route'), ('from', 'from_name'), ('to', 'to_name'),
+                 ('weekday digital flow/day', 'flow'), ('sampled pax-segments', 'n')], {'flow': ',.0f', 'n': ',.0f'})
+
+
+def asym(con, am, pm, top):
+    # UP share of segment-passenger flow on the busiest routes, in the AM and PM windows
+    q = f'''WITH f AS (SELECT base, dir, sum(f) tot, sum(f) FILTER (WHERE slot BETWEEN {am[0] * 2} AND {am[1] * 2 - 1}) a,
+          sum(f) FILTER (WHERE slot BETWEEN {pm[0] * 2} AND {pm[1] * 2 - 1}) p FROM {CELLS} WHERE daytype = 'weekday' AND flag IS NULL
+          AND dir IN ('UP', 'DOWN') GROUP BY 1, 2),
+        b AS (SELECT base, sum(tot) tot, sum(a) FILTER (WHERE dir = 'UP') au, sum(a) FILTER (WHERE dir = 'DOWN') ad,
+          sum(p) FILTER (WHERE dir = 'UP') pu, sum(p) FILTER (WHERE dir = 'DOWN') pd FROM f GROUP BY 1 HAVING count(*) = 2
+          ORDER BY tot DESC LIMIT {top})
+        SELECT base, au / (au + ad) am_up, pu / (pu + pd) pm_up FROM b ORDER BY tot DESC'''
+    r = sql(con, q)
+    r['peak_am'] = (r['am_up'] >= .5).map({True: 'UP', False: 'DOWN'})
+    r['peak_pm'] = (r['pm_up'] >= .5).map({True: 'UP', False: 'DOWN'})
+    flip = int((r['peak_am'] != r['peak_pm']).sum())
+    t = table(r.to_dict('records'), [('route', 'base'), ('UP share AM', 'am_up'), ('UP share PM', 'pm_up'),
+              ('heavier AM', 'peak_am'), ('heavier PM', 'peak_pm')], {'am_up': '.0%', 'pm_up': '.0%'})
+    return t, flip, len(r)
+
+
+def rhos(con):
+    return sql(con, f'''SELECT route_id, any_value(base || dir) route, max(rho) rho, sum(n) n FROM {CELLS} WHERE flag IS NULL GROUP BY 1''')
+
+
+def poor(con, od, k):
+    # per base route: share of passengers placed end to end; worst among the top routes by passengers
+    q = f'''SELECT base, sum(pc) pax, sum(pc) FILTER (WHERE tid IN (SELECT tid FROM {od})) ok FROM {TIX} WHERE base IS NOT NULL
+        GROUP BY 1 ORDER BY pax DESC LIMIT {k}'''
+    r = sql(con, q).assign(share=lambda x: x['ok'] / x['pax']).sort_values('share').head(10)
+    return table(r.to_dict('records'), [('route', 'base'), ('passengers', 'pax'), ('placed in order', 'share')], {'pax': ',.0f', 'share': '.1%'})
+
+
+def nights(con):
+    return sql(con, f'''SELECT slot // 2 h, count(*) cells, avg((confidence = 'low')::INT) low, avg(n) n FROM {CELLS}
+        WHERE flag IS NULL GROUP BY 1 ORDER BY 1''')
+
+
+def verdict(L):
+    c = L['calib_analysis']
+    lo, hi = min(c, key=lambda x: x['routes_over_cap_pax_pct']), max(c, key=lambda x: x['routes_over_cap_pax_pct'])
+    return (f"Scaling every over-capacity route down to capacity was analysed and not applied (calibration switch: {L['calib']['on']}). "
+            f"Even the mildest setting (quantile {lo['quantile']}, crush {lo['crush']}) flags {lo['routes_over_cap']} routes carrying "
+            f"{lo['routes_over_cap_pax_pct']}% of riders, and the strictest (quantile {hi['quantile']}, crush {hi['crush']}) flags "
+            f"{hi['routes_over_cap']} routes carrying {hi['routes_over_cap_pax_pct']}%, which is too much of the network to treat as noise.")
+
+
+def build(con, cov, gp, dy):
+    L, M, k = cov['load'], cov['match'], cfg()
+    am, pm = k['periods']['am'], k['periods']['pm']
+    nd = L['n_days']
+    wd = int(((dy['daytype'] == 'weekday') & ~dy['flag']).sum())
+    h = hourly(con, wd)
+    pa, pp = int(h.loc[am[0]:am[1] - 1].idxmax()), int(h.loc[pm[0]:pm[1] - 1].idxmax())
+    mid = h.loc[am[1]:pm[0] - 1]
+    hourly_chart(h, [pa, pp])
+    daily_chart(dy)
+    t = sql(con, f'''SELECT count(*) rows, sum(pc) pax, sum(pc) FILTER (WHERE fare_class = 'std') std,
+        sum(pc) FILTER (WHERE fare_class = 'ncr') ncr, avg((v IS NULL OR v = 'NULL')::INT) nullv FROM {TIX}''').iloc[0]
+    tot = dy.groupby('daytype')['pax'].agg(['mean', 'count']).reindex(list(DTC)).reset_index()
+    hi = k['confidence']['high_rho']
+    rr = rhos(con).dropna(subset=['rho'])
+    rho_chart(rr, hi)
+    un = rr[rr['rho'] < hi].sort_values('n', ascending=False)
+    lf_chart(lfhist(con, 0.25, 5))
+    at, flip, nb = asym(con, am, pm, 20)
+    nt = nights(con)
+    worst3 = nt.sort_values('low', ascending=False).head(3)
+    dev = dy.assign(a=dy['dev'].abs()).sort_values('a', ascending=False).head(5)
+    od, g, b = q1(WORK / 'od.parquet'), gp['delivery_all_days'], gp['boarding']
+    x = derived(cov, gp)
+    dl = [{'t': t_, 'days': g[t_]['days'], 'ratio': g[t_]['total_ratio'], 'q': ' / '.join(f'{v:.2f}' for v in g[t_]['q10_25_50_75_90']),
+           'b08': g[t_]['share_below_0.8'], 'veh': gp['vehicles_per_day'][t_]['mean'], 'rpb': gp['vehicles_per_day'][t_]['riders_per_bus_per_day_central']}
+          for t_ in ('weekday', 'saturday', 'sunday')]
+    ov, rc = gp['overlap'], gp['route_check']
+    S = []
+    S.append('# CHECKS\n\nGenerated by `python -m seatcast.run checks` from `data/out/` and `data/work/`. Nothing here is typed by hand.\n')
+    S.append(f'''## 1. Coverage
+
+| measure | value |
+|---|---|
+| ticket rows | {int(t['rows']):,} |
+| passengers | {int(t['pax']):,} |
+| days | {len(dy)} ({nd['weekday']} weekdays, {nd['saturday']} Saturdays, {nd['sunday']} Sundays and holidays) |
+| passengers on discounted standard slabs | {100 * t['std'] / t['pax']:.1f}% |
+| passengers on NCR fares | {100 * t['ncr'] / t['pax']:.1f}% |
+| rows with no vehicle number | {100 * t['nullv']:.1f}% |
+| route matched | {M['route_matched_pct']}% of passengers |
+| both stops matched | {M['both_stops_pct_of_routed']}% of routed passengers |
+| board before alight | {M['in_order_pct_of_both']}% of those |
+| usable end to end | {M['usable_pct_of_all']}% of passengers |
+| represented in flows (after imputing partial tickets) | {L['represent']['represented_pct']}% |
+| agency split of usable passengers | DTC {M['agency_pct_of_usable']['DTC']}%, DIMTS {M['agency_pct_of_usable']['DIMTS']}% |
+''')
+    S.append(f'''## 2. Expansion
+
+D_daily (mean digital passengers per day) = {L['D_daily']:,.0f}. E low / central / high = {L['E']['low']} / {L['E']['central']} / {L['E']['high']}.
+Each ticket passenger stands for about {L['E']['central']:.0f} riders of the {L['ridership_daily']['central']:,} per day in the central estimate (high {L['ridership_daily']['high']:,}); the file is {x['app_share_pct']:.1f}% of that.
+''')
+    S.append(f'''## 3. Weekday hourly profile
+
+{img('Weekday passengers per hour', 'weekday_hourly.png')}
+
+Morning peak {pa}:00 ({h[pa]:,.0f} passengers per day), evening peak {pp}:00 ({h[pp]:,.0f}). Quietest midday hour {int(mid.idxmin())}:00 ({mid.min():,.0f}). Peak-to-midday ratio: morning {h[pa] / mid.min():.1f}, evening {h[pp] / mid.min():.1f}.
+''')
+    S.append(f'''## 4. Daily totals by day type
+
+{img('Daily passengers coloured by day type', 'daily_totals.png')}
+
+{table(tot.to_dict('records'), [('day type', 'daytype'), ('days', 'count'), ('mean passengers per day', 'mean')], {'mean': ',.0f', 'count': 'd'})}
+
+Weekday cells carry more flow than Sunday cells in {L['weekday_gt_sunday_pct_of_shared_cells']}% of the cells both day types share. Holidays count as Sundays.
+''')
+    S.append(f'''## 5. Busiest corridors
+
+Top 15 segments by weekday daily digital flow (before expansion).
+
+{corridors(con, 15)}
+''')
+    S.append(f'''## 6. Directional asymmetry
+
+UP share of flow on the top {nb} routes by weekday flow, morning window {am[0]}:00-{am[1]}:00 against evening window {pm[0]}:00-{pm[1]}:00. The heavier direction differs between the windows on {flip} of {nb} routes.
+
+{at}
+''')
+    S.append(f'''## 7. Week-to-week stability
+
+{img('Distribution of week-to-week rho per route', 'rho_hist.png')}
+
+{len(rr)} route-directions have a rho. Median {rr['rho'].median():.2f}; {len(un)} ({100 * len(un) / len(rr):.0f}%) are below the high-confidence threshold of {hi}. The 15 busiest unstable routes:
+
+{table(un.head(15).to_dict('records'), [('route', 'route'), ('rho', 'rho'), ('sampled pax-segments', 'n')], {'rho': '.2f', 'n': ',.0f'})}
+''')
+    S.append(f'''## 8. Anomalous days
+
+Days flagged (beyond the configured deviation from the same-weekday median): {int(dy['flag'].sum()) or 'none'}. Largest deviations:
+
+{table(dev.to_dict('records'), [('date', 'date'), ('day type', 'daytype'), ('passengers', 'pax'), ('deviation', 'dev')], {'pax': ',.0f', 'dev': '+.1%'})}
+''')
+    S.append(f'''## 9. Plausibility
+
+{img('Load factor distribution', 'lf_hist.png')}
+
+Publishable cells: {L['cells_publishable']:,} of {L['cells']:,}. Load factor p10 / p50 / p90 / p99 = {L['LF_quantiles_publishable']['p10']} / {L['LF_quantiles_publishable']['p50']} / {L['LF_quantiles_publishable']['p90']} / {L['LF_quantiles_publishable']['p99']}.
+Over seats: {L['over_seats_pct']}% of cells. Over total capacity: {L['over_total_pct']}%. Censored at {k['censor_factor']} x total capacity: {L['censored_pct_of_cells']}% of cells (these show as the top load factor, which is the censor cap and explains the repeated top values below).
+
+Routes with most censored cells:
+
+{table(L['censored_routes_top'][:10], [('route', 'base'), ('dir', 'dir'), ('censored cells', 'cells'), ('sampled pax-segments', 'n')], {'n': ',.0f'})}
+
+Ten most crowded route-hours by standee-minutes:
+
+{table(L['top10_route_hours_by_standee_min'], [('route', 'route'), ('day type', 'daytype'), ('hour', 'hour'), ('standee-min', 'standee_min'), ('LF', 'LF'), ('sampled pax', 'n'), ('stretch', 'stretch')], {'standee_min': ',.0f', 'n': ',.0f'})}
+''')
+    S.append(f'''## 10. Where estimates are weakest
+
+- Low-n cells: {L['cells_by_flag']['low_n']:,} of {L['cells']:,} cells have fewer than {k['min_cell_n']} sampled passengers and are shown as limited data. Of the publishable cells, confidence is high {L['confidence_share_pct']['high']}%, medium {L['confidence_share_pct']['medium']}%, low {L['confidence_share_pct']['low']}%.
+- Schedule gaps: {L['schedule_gap_cells']:,} cells carry passengers but no scheduled bus ({L['schedule_gap_pax_pct']}% of passengers).
+- Hours with the highest low-confidence share: {', '.join(f"{int(r.h)}:00 ({100 * r.low:.0f}%)" for r in worst3.itertuples())}.
+
+Ten worst-placed routes among the 100 busiest by passengers:
+
+{poor(con, od, 100)}
+
+Per hour of day, publishable cells:
+
+{table(nt.to_dict('records'), [('hour', 'h'), ('cells', 'cells'), ('low confidence', 'low'), ('mean sampled pax-segments', 'n')], {'cells': ',', 'low': '.0%', 'n': '.1f'})}
+''')
+    S.append(f'''## 11. GPS ground truth
+
+Route check on {rc['n']:,} sampled pings: {rc['within']:.1%} within {k['gps']['route_m']} m of a stop of their own route, against {rc['control_within']:.1%} for another route (median {rc['median_m']:.0f} m against {rc['control_median_m']:,.0f} m).
+
+Vehicle overlap on the {len(gp['detail_days'])} detail days: {ov['share_passengers_in_gps']:.1%} of ticket passengers (with a known vehicle) rode a vehicle that is in the DTC GPS feed.
+
+Where was the bus at purchase? {b['matched']:,} tickets matched to a ping (median lag {b['lag_median_s']:.0f} s). Distance to the matched boarding stop: median {b['board']['median_m']:.0f} m, {b['board']['within_500m']:.0%} within 500 m. Distance to the alighting stop: median {b['alight']['median_m']:,.0f} m, {b['alight']['within_500m']:.1%} within 500 m.
+
+{x['rung_table']}
+
+Delivered service (observed bus-km against scheduled), all days of October:
+
+{table(dl, [('day type', 't'), ('days', 'days'), ('delivered / scheduled', 'ratio'), ('route-band q10/25/50/75/90', 'q'), ('share below 0.8', 'b08'), ('vehicles pinged per day', 'veh'), ('riders per bus per day (central)', 'rpb')], {'b08': '.0%', 'veh': ',', 'rpb': ','})}
+''')
+    S.append(f'''## 12. The rejected calibration
+
+{x['calib_table']}
+
+{verdict(L)}
+''')
+    return '\n'.join(S)
+
+
+def run():
+    t0 = time.time()
+    con = duckdb.connect()
+    con.execute("SET memory_limit='4GB'; SET threads=4")
+    cov = json.loads((OUT / 'coverage.json').read_text(encoding='utf-8'))
+    gp = json.loads((OUT / 'gps_checks.json').read_text(encoding='utf-8'))
+    dy = pd.read_csv(WORK / 'daily.csv')
+    md = build(con, cov, gp, dy)
+    (ROOT / 'docs' / 'CHECKS.md').write_text(md, encoding='utf-8')
+    print('checks: docs/CHECKS.md written', round(time.time() - t0, 1), 's')

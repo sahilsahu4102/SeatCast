@@ -184,3 +184,9 @@ def test_operator():
 @need(ROOT / 'docs' / 'TECH_NOTE.md')
 def test_note_filled():
     assert '{{' not in (ROOT / 'docs' / 'TECH_NOTE.md').read_text(encoding='utf-8')
+
+
+@need(ROOT / 'docs' / 'CHECKS.md')
+def test_checks_report():
+    s = (ROOT / 'docs' / 'CHECKS.md').read_text(encoding='utf-8')
+    assert '{{' not in s and not re.search(r'\bnan\b', s, re.I)
