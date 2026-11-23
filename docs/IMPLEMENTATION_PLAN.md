@@ -103,6 +103,12 @@ GPS archive: complete 13:45 (16,077,236,568 bytes); SHA-256 checked in P0
 | G5 Tue 15:00 | feature freeze | cut from the list below |
 | G6 before submit | the checklist in §8 | — |
 
+**Every step is tested before it is committed** (agreed 23 Nov):
+1. **Unit tests** on hand-made fixtures (`tests/test_*.py`, toy feeds in `tests/fixtures/`). They need no data, so CI runs them.
+2. **Data checks** on the real outputs of each step (`tests/test_data.py`): completeness against the raw file, invariants such as contiguous stop indexes and distances that never run backwards, the CLAUDE.md §3 facts, the demo query, and privacy of everything in `data/out/`. Each check skips when its input isn't built, so CI skips them and a local `pytest -q` runs them.
+3. **CI** (`.github/workflows/ci.yml`) on every push and pull request: install from `requirements.txt`, `ruff check` (bug rules only), `pytest -q`, and guards that fail if any `data/` file is committed or a vehicle plate appears in a tracked file. A `v*` tag runs the same job and then publishes a GitHub release.
+4. **Review:** code written by `line-cook` is reviewed by `sous-chef` (CLAUDE.md §17); every phase commits only on a green suite, one commit per logical step.
+
 ## 6. Cut list (cut in this order)
 
 1. P8 entirely: GTFS-RT feed, hosting.
