@@ -132,3 +132,14 @@ def test_outputs_private():
             assert not {'v', 'vehicle', 'vehicle_number'} & set(pq.read_schema(p).names), p
         elif p.suffix in ('.json', '.geojson', '.csv', '.md'):
             assert not PLATE.search(p.read_text(encoding='utf-8')), p
+
+
+# P4b GPS ground truth: the bus is at the matched boarding stop when the ticket is bought, far from the alighting one
+@need(OUT / 'gps_checks.json')
+def test_gps_ground_truth():
+    g = json.loads((OUT / 'gps_checks.json').read_text(encoding='utf-8'))
+    assert g['route_check']['ok']
+    b = g['boarding']
+    assert b['matched_share'] > 0.8
+    assert b['board']['median_m'] < 300 and b['board']['within_500m'] > 0.75
+    assert b['alight']['median_m'] > 2000

@@ -18,8 +18,23 @@ planner: {max_transfers: 2, window_min: 120, shift_min: [10, 20, 30], alternativ
 weights: {walk: 1.5, wait: 1.5, transfer_min: 5}    # ASSUMPTION
 multipliers: {seat_low: 1.0, seat_high: 1.15, seat_lf: 0.6, stand: 2.35}   # [R10]
 desired_load_factor: 0.8                         # ASSUMPTION
-gps: {days: ["2026-10-14", "2026-10-17", "2026-10-11"], match_window_s: 60}   # Wed, Sat, Sun outside festival week. D-05
+gps:                                             # P4b ground truth (D-05)
+  days: ["2026-10-14", "2026-10-17", "2026-10-11"]   # Wed, Sat, Sun outside festival week
+  match_window_s: 60                             # use the vehicle's last ping at most this long before the ticket
+  route_m: 200                                   # ASSUMPTION: a ping is on its route within this distance of a route stop
+  route_sample: 0.01                             # share of pings sampled for the route_id check
+  route_min_share: 0.5                           # route_id check passes at >= this share within route_m ...
+  route_min_lift: 2.0                            # ... and >= this multiple of the shuffled-route control
+  sched_min: 2                                   # route-hours need this many scheduled trips for a delivery ratio
+  top_routes: 50                                 # high-demand routes listed
+  alias_share: 0.7                               # ASSUMPTION: a GPS alias needs this share of tickets nearest one stop ...
+  alias_n: 20                                    # ... from at least this many tickets
+  alias_top: 30                                  # unmatched names examined
+  board_m: [300, 500]                            # distance bands reported
 match_geo_m: 300                                 # ASSUMPTION: a name found city-wide may snap to a route stop this close (P2 rung f)
 match_generic: [terminal, crossing, metro, station, depot, stand, chowk, mor, bus, stop, near, opposite]   # ASSUMPTION: descriptor words ignored when fuzzy-scoring stop names (P2)
 match_rest: 70     # ASSUMPTION: fuzzy stop match also needs the unshared tokens to be this similar (max of ratio, partial_ratio); tuned on audited top-50 pairs (P2)
 match_superset: true   # ASSUMPTION: accept a subset-guarded stop name when exactly one stop on the route contains all its words, or vice versa (rung e, P2)
+impute_min_n: 5                                  # ASSUMPTION: placed passengers needed at an imputation level before falling back (P3)
+periods: {am: [7, 10], pm: [17, 20]}             # operator peak windows, hours [start, end) (P3, gate G3)
+slot_window: 1                                   # ASSUMPTION: a cell's load pools flows and scheduled buses over slots b-1..b+1 (90 min), so sparse timetables don't leave false gaps (P3)
