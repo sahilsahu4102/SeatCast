@@ -1,4 +1,5 @@
 import json
+import math
 import subprocess
 import time
 
@@ -13,7 +14,9 @@ GD = WORK / 'gps'
 IST_S = 19800
 # defaults for gps keys missing in config.yaml (reported to the owner of config)
 NEW = {'route_m': 200, 'route_sample': 0.01, 'route_min_share': 0.5, 'route_min_lift': 2.0, 'sched_min': 2,
-       'top_routes': 50, 'alias_share': 0.7, 'alias_n': 20, 'alias_top': 30, 'board_m': [300, 500]}
+       'top_routes': 50, 'stop_m': 150, 'pass_gap_s': 900, 'ref_fracs': [0.4, 0.7], 'ref_win': 0.15,
+       'pass_min_day': 5, 'km_dt': [1, 120], 'km_step': [10, 1000], 'alias_share': 0.7, 'alias_n': 20, 'alias_top': 30, 'board_m': [300, 500]}
+ALL = ('2026-10-01', '2026-10-31')   # archive span
 NAMED = ['badarpur', 'shakarpur', 'madangir', 'telephone exchange', 'bawana', 'sarai rohella', 'health center']
 
 MAC = f'''
@@ -33,6 +36,7 @@ def G():
 def db():
     con = duckdb.connect()
     con.execute('INSTALL sqlite; LOAD sqlite;')
+    con.execute("SET memory_limit='4GB'; SET threads=4")
     (WORK / 'tmp').mkdir(exist_ok=True)
     con.execute(f"SET temp_directory='{(WORK / 'tmp').as_posix()}'")
     con.execute(MAC)
@@ -43,14 +47,30 @@ def fname(d):
     return f'bus_movements_{d.replace("-", "_")}.db'
 
 
-def extract(days):
-    miss = [d for d in days if not (GD / fname(d)).exists()]
-    if not miss:
-        return 0.0
+def extract(d):
     GD.mkdir(parents=True, exist_ok=True)
+    subprocess.run([Z7, 'x', str(ARC), f'-o{GD}', fname(d), '-y'], check=True, capture_output=True)
+
+
+def rmdb(d):
+    for x in GD.glob(fname(d) + '*'):
+        x.unlink()
+
+
+def convert(con, days):
+    # one .db on disk at a time; days with a parquet are skipped
     t = time.time()
-    subprocess.run([Z7, 'x', str(ARC), f'-o{GD}', *map(fname, miss), '-y'], check=True, capture_output=True)
+    for d in days:
+        if not (WORK / f'gps_{d}.parquet').exists():
+            extract(d)
+            topq(con, d)
+            print('converted', d, round(time.time() - t), 's', flush=True)
+        rmdb(d)
     return time.time() - t
+
+
+def alldays():
+    return [str(x.date()) for x in pd.date_range(ALL[0], ALL[1])]
 
 
 def topq(con, d):
@@ -115,42 +135,230 @@ def sched(con, g):
         JOIN tr USING (trip_id) JOIN ok USING (service_id) GROUP BY ALL''').df()
 
 
-def observed(con, gps):
-    # distinct (vehicle, trip) by IST hour of its first ping
-    return con.sql(f'''SELECT route_id, ist_day(f) d, ist_hour(f) h, count(*) obs FROM (
-        SELECT route_id, v, trip_id, min(t_utc) f FROM {gps} WHERE route_id IS NOT NULL GROUP BY ALL) GROUP BY ALL''').df()
+def daytype(d, hol):
+    d = pd.Timestamp(d)
+    return 'sunday' if str(d.date()) in hol or d.weekday() == 6 else 'saturday' if d.weekday() == 5 else 'weekday'
 
 
-def delivery(con, g, gp, days):
-    dt = {pd.Timestamp(d): ('weekday' if pd.Timestamp(d).weekday() < 5 else
-                                   'saturday' if pd.Timestamp(d).weekday() == 5 else 'sunday') for d in days}
-    ob = observed(con, gp)
+def band(h, bands):
+    return max(b for b in bands[:-1] if b <= h)
+
+
+def shrunk(obs, sched, k):
+    return (obs + k) / (sched + k)
+
+
+def trips(con, gps):
+    # one row per GPS (vehicle, trip): IST day and hour of its first ping, and its duration in seconds
+    return con.sql(f'''SELECT route_id, ist_day(f) d, ist_hour(f) h, l - f dur FROM (
+        SELECT route_id, v, trip_id, min(t_utc) f, max(t_utc) l FROM {gps} WHERE route_id IS NOT NULL GROUP BY ALL)''').df()
+
+
+def count_obs(tr):
+    return tr.groupby(['route_id', 'd', 'h']).size().rename('obs').reset_index()
+
+
+def passq(near, gap):
+    # a vehicle's near-stop pings form one pass; a gap above `gap` seconds starts a new one; the pass is timed by its closest ping
+    return f'''WITH a AS (SELECT *, t - lag(t) OVER w g FROM {near} WINDOW w AS (PARTITION BY route_id, stop_id, v ORDER BY t)),
+        b AS (SELECT *, sum((g IS NULL OR g > {gap})::INT) OVER (PARTITION BY route_id, stop_id, v ORDER BY t
+          ROWS UNBOUNDED PRECEDING) p FROM a)
+        SELECT route_id, stop_id, v, arg_min(t, m) t FROM b GROUP BY route_id, stop_id, v, p'''
+
+
+def bands_at(g, bs):
+    # per (route, stop): number of day-hour bands with a scheduled departure
+    st = g['stop_times'][['trip_id', 'stop_id', 'dep']].assign(h=lambda x: (x['dep'] // 3600 % 24).astype(int))
+    r = st.merge(g['trips'][['trip_id', 'route_id']], on='trip_id')[['route_id', 'stop_id', 'h']].drop_duplicates()
+    r['b'] = r['h'].map(lambda h: band(h, bs))
+    return r.groupby(['route_id', 'stop_id'])['b'].nunique().rename('nb').reset_index().astype({'route_id': int})
+
+
+def refstops(g, k):
+    # per GTFS route, stops near ref_fracs of its canonical pattern, preferring one with departures in most bands
+    pt = pd.read_parquet(WORK / 'patterns.parquet')
+    pt = pt[pt['canonical']].drop_duplicates('route_id')[['pattern_id', 'route_id']]
+    ps = pd.read_parquet(WORK / 'pattern_stops.parquet').merge(pt, on='pattern_id')
+    ps = ps.assign(route_id=ps['route_id'].astype(int), stop_id=ps['stop_id'].astype(str), f=ps['dist_m'] / ps.groupby('pattern_id')['dist_m'].transform('max'))
+    nb = bands_at(g, k['bands']).assign(stop_id=lambda x: x['stop_id'].astype(str))
+    ps = ps.merge(nb, on=['route_id', 'stop_id'], how='left').fillna({'nb': 0})
+    out = []
+    for f in k['ref_fracs']:
+        c = ps.assign(dev=(ps['f'] - f).abs())
+        c['near'] = c['dev'] <= k['ref_win']
+        c = c.sort_values(['route_id', 'near', 'nb', 'dev'], ascending=[True, False, False, True])
+        out.append(c.drop_duplicates('route_id')[['route_id', 'stop_id', 'lat', 'lon']])
+    return pd.concat(out).drop_duplicates(['route_id', 'stop_id'])
+
+
+def observed_passes(con, gps, refs, k):
+    con.register('refs', refs)
+    d = k['stop_m'] / 100000
+    con.execute(f'''CREATE OR REPLACE TABLE near AS SELECT p.route_id, r.stop_id, p.v, p.t_utc t,
+        haversine_m(p.lat, p.lon, r.lat, r.lon) m FROM {gps} p JOIN refs r ON p.route_id = r.route_id
+        AND abs(p.lat - r.lat) < {d} AND abs(p.lon - r.lon) < {d} WHERE haversine_m(p.lat, p.lon, r.lat, r.lon) <= {k['stop_m']}''')
+    return con.sql(f'SELECT route_id, ist_day(t) d, ist_hour(t) h, count(*) obs FROM ({passq("near", k["pass_gap_s"])}) GROUP BY ALL').df()
+
+
+def sched_stops(con, g, refs):
+    # GTFS departures at the reference stops per route, day type and hour
+    cal = pd.DataFrame(g['calendar'])
+    ok = pd.DataFrame([(s, t) for t, d in cfg()['daytypes'].items() for s in gtfs.services({'calendar': cal}, d)],
+                      columns=['service_id', 'daytype'])
+    con.register('ok', ok)
+    con.register('tr2', g['trips'][['trip_id', 'route_id', 'service_id']].astype({'route_id': int}))
+    con.register('st2', g['stop_times'][['trip_id', 'stop_id', 'dep']].astype({'stop_id': str}))
+    con.register('refs2', refs[['route_id', 'stop_id']].astype({'stop_id': str}))
+    return con.sql('''SELECT tr2.route_id, ok.daytype, CAST(st2.dep // 3600 % 24 AS INT) h, count(*) sched
+        FROM st2 JOIN tr2 USING (trip_id) JOIN ok USING (service_id) JOIN refs2 ON refs2.route_id = tr2.route_id AND refs2.stop_id = st2.stop_id
+        GROUP BY ALL''').df()
+
+
+def delivery(ob, sc, seen, days, k, hol, method, lr=None):
+    # route x daytype x band: sched = departures per day x days of that type, obs = pooled observations
+    bs = k['bands']
+    dt = {pd.Timestamp(d): daytype(d, hol) for d in days}
+    nd = pd.Series(dt).value_counts()
     ob = ob.assign(d=pd.to_datetime(ob['d']))
-    ob = ob[ob['d'].isin(dt)].assign(daytype=lambda x: x['d'].map(dt))
-    dtc = set(ob['route_id'])
-    sc = sched(con, g)
-    sc = sc[sc['route_id'].isin(dtc)]
-    rh = sc.merge(ob.groupby(['route_id', 'daytype', 'h'], as_index=False)['obs'].sum(), how='left',
-                  on=['route_id', 'daytype', 'h']).fillna({'obs': 0})
-    return rh, dt, dtc
+    ob = ob[ob['d'].isin(dt)].assign(daytype=lambda x: x['d'].map(dt), band=lambda x: x['h'].map(lambda h: band(h, bs)))
+    sc = sc.assign(band=sc['h'].map(lambda h: band(h, bs)))
+    sc = sc.groupby(['route_id', 'daytype', 'band'], as_index=False)['sched'].sum()
+    sc['ndays'] = sc['daytype'].map(nd)
+    sc['sched'] = sc['sched'] * sc['ndays']
+    cov = sc[sc['route_id'].isin(seen)]
+    o = ob.groupby(['route_id', 'daytype', 'band'], as_index=False)['obs'].sum()
+    rb = cov.merge(o, how='left', on=['route_id', 'daytype', 'band']).fillna({'obs': 0})
+    rb['lr'] = rb['route_id'].map(lr) if lr is not None else 1.0
+    rb['ratio'] = shrunk(rb['obs'], rb['sched'], k['shrink_trips'] * rb['lr'])
+    rb['ratio_raw'] = rb['obs'] / rb['sched']
+    rb['method'] = method
+    return rb[COLS + ['lr']], sc, ob, dt
 
 
-def scale(rh, od, k):
-    r = rh.groupby(['route_id', 'daytype'], as_index=False)[['sched', 'obs']].sum()
-    r['ratio'] = r['obs'] / r['sched']
-    r = r.merge(od, on='route_id', how='left').fillna({'pax': 0})
-    return r.sort_values(['daytype', 'pax'], ascending=[True, False])
+COLS = ['route_id', 'daytype', 'band', 'sched', 'obs', 'ndays', 'ratio', 'ratio_raw', 'method']
 
 
-def ratio_stats(rh, k):
-    x = rh[rh['sched'] >= k['sched_min']].assign(ratio=lambda d: d['obs'] / d['sched'])
+def top_od():
+    return pd.read_parquet(WORK / 'od.parquet', columns=['route_id', 'pc']).groupby('route_id', as_index=False)['pc'].sum().rename(
+        columns={'pc': 'pax'}).astype({'route_id': int})
+
+
+def qs(x):
+    return x.quantile([.1, .25, .5, .75, .9]).round(3).tolist()
+
+
+def delivery_stats(rb, ob, dt, od, k, unc):
     out = {}
-    for t, d in x.groupby('daytype'):
-        q = d['ratio'].quantile([.1, .25, .5, .75, .9]).round(3).tolist()
-        a = rh[rh['daytype'] == t]
-        out[t] = {'route_hours': len(d), 'q10_25_50_75_90': q, 'total_ratio': round(a['obs'].sum() / a['sched'].sum(), 3),
-                  'share_below_0.5': round(float((d['ratio'] < .5).mean()), 3)}
+    for t, a in rb.groupby('daytype'):
+        c = a[a['sched'] >= k['sched_min'] * a['lr']]
+        rt = a.groupby('route_id', as_index=False).agg(sched=('sched', 'sum'), obs=('obs', 'sum'), lr=('lr', 'first'))
+        rt['ratio'] = shrunk(rt['obs'], rt['sched'], k['shrink_trips'] * rt['lr'])
+        rt = rt.merge(od, on='route_id', how='left').fillna({'pax': 0}).sort_values('pax', ascending=False)
+        top = rt.head(k['top_routes']).assign(dev=lambda x: x['ratio'].map(math.log).abs()).sort_values('dev', ascending=False).head(10)
+        days = [d for d, x in dt.items() if x == t]
+        dd = ob[ob['d'].isin(days) & ob['route_id'].isin(a['route_id'])].groupby('d')['obs'].sum()
+        per = (dd / (a['sched'].sum() / len(days))).round(3)
+        out[t] = {'days': len(days), 'route_bands': len(c), 'sched': round(float(a['sched'].sum())), 'obs': round(float(a['obs'].sum())),
+                  'total_ratio': round(a['obs'].sum() / a['sched'].sum(), 3), 'q10_25_50_75_90': qs(c['ratio']),
+                  'share_below_0.8': round(float((c['ratio'] < .8).mean()), 3), 'share_above_1.2': round(float((c['ratio'] > 1.2).mean()), 3),
+                  'sched_trips_no_gps_routes': unc[t],
+                  'top_demand_largest_correction': top[['route_id', 'sched', 'obs', 'ratio', 'pax']].round(3).to_dict('records'),
+                  'daily_network_ratio': {'mean': round(float(per.mean()), 3), 'std': round(float(per.std()), 3),
+                                          'min': float(per.min()), 'max': float(per.max()), 'cv': round(float(per.std() / per.mean()), 3),
+                                          'by_day': {str(x.date()): v for x, v in per.items()}}}
     return out
+
+
+def kmq(src, k):
+    # km driven per route, IST day and hour: steps between consecutive pings of one vehicle on an unchanged route_id
+    a, b = k['km_dt']
+    lo, hi = k['km_step']
+    return f'''SELECT route_id, ist_day(t_utc) d, ist_hour(t_utc) h, sum(m) / 1000 km, count(*) steps FROM (
+        SELECT route_id, t_utc, t_utc - lag(t_utc) OVER w dt, route_id = lag(route_id) OVER w same,
+          haversine_m(lat, lon, lag(lat) OVER w, lag(lon) OVER w) m FROM {src} WINDOW w AS (PARTITION BY v ORDER BY t_utc))
+        WHERE same AND dt BETWEEN {a} AND {b} AND m >= {lo} AND m < {hi} GROUP BY ALL'''
+
+
+def obs_km(con, days, k):
+    # per-day cache of the small km aggregate
+    out = []
+    for d in days:
+        p = WORK / f'gps_km_{d}.parquet'
+        if not p.exists():
+            q = kmq(f"read_parquet('{(WORK / f'gps_{d}.parquet').as_posix()}')", k)
+            con.execute(f"COPY ({q}) TO '{p.as_posix()}' (FORMAT parquet)")
+        out.append(pd.read_parquet(p))
+    km = pd.concat(out)
+    km = km.assign(d=pd.to_datetime(km['d'])).groupby(['route_id', 'd', 'h'], as_index=False)['km'].sum().rename(columns={'km': 'obs'})
+    return km.astype({'route_id': int})
+
+
+def hopkm(con, st, tp, ps, tr, ok):
+    # scheduled km per route, day type and departure hour of each hop, and the mean trip length per route
+    st = st.assign(k=st.groupby('trip_id').cumcount())
+    for n, x in (('st3', st), ('tp3', tp), ('ps3', ps), ('tr3', tr), ('ok3', ok)):
+        con.register(n, x)
+    con.execute('''CREATE OR REPLACE TABLE hop AS SELECT st3.trip_id, CAST(st3.dep // 3600 % 24 AS INT) h,
+        lead(ps3.dist_m) OVER (PARTITION BY st3.trip_id ORDER BY st3.k) - ps3.dist_m hop
+        FROM st3 JOIN tp3 USING (trip_id) JOIN ps3 ON ps3.pattern_id = tp3.pattern_id AND ps3.k = st3.k''')
+    sc = con.sql('''SELECT CAST(tr3.route_id AS BIGINT) route_id, ok3.daytype, h, sum(hop) / 1000 sched FROM hop
+        JOIN tr3 USING (trip_id) JOIN ok3 USING (service_id) WHERE hop IS NOT NULL GROUP BY ALL''').df()
+    lr = con.sql('''SELECT CAST(route_id AS BIGINT) route_id, avg(l) lr FROM (SELECT trip_id, sum(hop) / 1000 l FROM hop GROUP BY 1)
+        JOIN tr3 USING (trip_id) GROUP BY 1''').df().set_index('route_id')['lr']
+    return sc, lr
+
+
+def sched_km(con, g):
+    cal = pd.DataFrame(g['calendar'])
+    ok = pd.DataFrame([(s, t) for t, d in cfg()['daytypes'].items() for s in gtfs.services({'calendar': cal}, d)], columns=['service_id', 'daytype'])
+    GD.mkdir(parents=True, exist_ok=True)
+    _, ps, tp = gtfs.patterns(g=g, w=GD)
+    for f in ('patterns.parquet', 'pattern_stops.parquet'):
+        (GD / f).unlink()
+    return hopkm(con, g['stop_times'][['trip_id', 'dep']], tp[['trip_id', 'pattern_id']], ps[['pattern_id', 'k', 'dist_m']],
+                 g['trips'][['trip_id', 'route_id', 'service_id']], ok)
+
+
+def vehicles(con, gps, dt, hol_ok=None):
+    # distinct vehicles pinged per IST day, by day type (counts only)
+    v = con.sql(f'SELECT ist_day(t_utc) d, count(DISTINCT v) n FROM {gps} GROUP BY 1').df()
+    v = v.assign(daytype=pd.to_datetime(v['d']).map(dt)).dropna()
+    return {t: {'mean': round(float(x['n'].mean())), 'min': int(x['n'].min()), 'max': int(x['n'].max())} for t, x in v.groupby('daytype')}
+
+
+def runtimes(g):
+    # median scheduled run time per route, seconds
+    st = g['stop_times'].groupby('trip_id')['dep'].agg(lambda x: x.max() - x.min()).rename('run').reset_index()
+    return st.merge(g['trips'][['trip_id', 'route_id']], on='trip_id').astype({'route_id': int}).groupby('route_id')['run'].median()
+
+
+def validate(tr, rbt, rbp, rbk, g, routes, hol):
+    # weekday: trip-count ratio, GPS/scheduled duration ratio, and the stop-pass ratio, per route
+    run = runtimes(g)
+    w = tr[tr['d'].map(lambda d: daytype(d, hol)) == 'weekday']
+    dur = w.groupby('route_id')['dur'].median()
+    out = {}
+    for r in routes:
+        x, y, z = [b[(b['route_id'] == r) & (b['daytype'] == 'weekday')] for b in (rbt, rbp, rbk)]
+        if x.empty or y.empty or z.empty or r not in dur:
+            out[str(r)] = None
+            continue
+        c, du = x['obs'].sum() / x['sched'].sum(), float(dur[r] / run[r])
+        out[str(r)] = {'bus_km_ratio_raw': round(z['obs'].sum() / z['sched'].sum(), 2), 'bus_km_ratio': round(float((z['ratio'] * z['sched']).sum() / z['sched'].sum()), 2), 'count_ratio': round(c, 2), 'duration_ratio': round(du, 2), 'count_x_duration': round(c * du, 2),
+                       'pass_ratio_raw': round(y['obs'].sum() / y['sched'].sum(), 2),
+                       'pass_ratio_shrunk': round(shrunk(y['obs'].sum(), y['sched'].sum(), 10), 2), 'pass_sched_per_day': round(y['sched'].sum() / y['ndays'].iloc[0], 1)}
+    return out
+
+
+def coverage(rbp, k):
+    # reference stops with few observed passes per day make the ratio unreliable
+    w = rbp[rbp['daytype'] == 'weekday'].groupby('route_id')[['obs', 'sched']].sum()
+    nd = rbp[rbp['daytype'] == 'weekday']['ndays'].iloc[0]
+    pd_ = w['obs'] / nd
+    low = pd_ < k['pass_min_day']
+    return {'routes': len(w), 'routes_below_min_passes_per_day': int(low.sum()), 'share_routes': round(float(low.mean()), 3),
+            'share_weekday_sched_passes': round(float(w['sched'][low].sum() / w['sched'].sum()), 3), 'min_passes_per_day': k['pass_min_day'],
+            'passes_per_day_q10_25_50_75_90': qs(pd_)}
 
 
 def overlap(con, days, gps):
@@ -217,7 +425,7 @@ def names(k):
     return u[['name_n', 'route', 'route_id', 'cand', 'runner']]
 
 
-def alias_evidence(con, g, days, k, win):
+def alias_evidence(con, g, days, k, win, gps):
     u = names(k)
     sn = g['stops'][['stop_id', 'stop_name', 'stop_lat', 'stop_lon']].copy()
     from seatcast.clean import norm
@@ -236,6 +444,8 @@ def alias_evidence(con, g, days, k, win):
     con.execute(f'''CREATE OR REPLACE TABLE ta AS SELECT t.tid, t.ss_n name_n, t.route_raw route, upper(trim(t.v)) v, ist_utc(t.ts) t
         FROM '{(WORK / 'tickets.parquet').as_posix()}' t JOIN uu ON uu.name_n = t.ss_n AND uu.route = t.route_raw
         WHERE t.v IS NOT NULL AND t.v <> 'NULL' AND CAST(t.date AS DATE) IN (SELECT unnest({[str(d) for d in days]}::DATE[]))''')
+    con.execute(f'''CREATE OR REPLACE TABLE gx AS SELECT upper(trim(v)) v, lat, lon, route_id, t_utc t FROM {gps}
+        WHERE (upper(trim(v)), ist_day(t_utc)) IN (SELECT v, ist_day(t) FROM ta)''')
     con.execute('CREATE OR REPLACE TABLE aa AS ' + asof('ta', 'gx', win))
     return con.sql('''WITH d AS (SELECT ta.tid, ta.name_n, ta.route, c.c, min(haversine_m(a.lat, a.lon, c.stop_lat, c.stop_lon)) m
           FROM ta JOIN aa a USING (tid) JOIN cand c ON c.name_n = ta.name_n AND c.route = ta.route GROUP BY ALL),
@@ -252,42 +462,58 @@ def propose(ev, k):
     return ev.rename(columns={'tot': 'name_tickets', 'share': 'share_nearest'})
 
 
-def top_od():
-    return pd.read_parquet(WORK / 'od.parquet', columns=['route_id', 'pc']).groupby('route_id', as_index=False)['pc'].sum().rename(
-        columns={'pc': 'pax'}).astype({'route_id': int})
-
-
 def gps():
     t0, k = time.time(), G()
-    days = cfg()['gps']['days']
-    r = {'days': days, 'extract_s': round(extract(days), 1)}
+    c3 = cfg()['gps']['days']
+    days, hol = alldays(), set(cfg()['holidays'])
+    r = {'days': len(days), 'detail_days': c3}
     con = db()
-    gp = [topq(con, d) for d in days]
-    gl = "read_parquet(%s)" % [p.as_posix() for p in gp]
+    r['convert_s'] = round(convert(con, days), 1)
+    pq = lambda ds: 'read_parquet(%s)' % [(WORK / f'gps_{d}.parquet').as_posix() for d in ds]
     g = gtfs.load()
     routestops(con, g)
-    con.execute(f'CREATE OR REPLACE VIEW gv0 AS SELECT * FROM {gl}')
-    r['pings'] = one(con, 'SELECT count(*) FROM gv0')[0]
+    con.execute(f'CREATE OR REPLACE VIEW gv0 AS SELECT * FROM {pq(c3)}')
+    con.execute(f'CREATE OR REPLACE VIEW gva AS SELECT * FROM {pq(days)}')
+    r['pings'] = one(con, 'SELECT count(*) FROM gva')[0]
     r['route_check'] = route_check(con, 'gv0', k)
     print('route check', r['route_check'], flush=True)
     if r['route_check']['ok']:
-        rh, dt, dtc = delivery(con, g, 'gv0', days)
-        sc = scale(rh, top_od(), k)
-        sc.round(3).to_csv(WORK / 'service_scale.csv', index=False)
-        r['delivery'] = {'dtc_routes_seen': len(dtc), **ratio_stats(rh, k)}
-        top = sc[sc['pax'] > 0].groupby('daytype').head(k['top_routes'])
-        w = top.sort_values(['daytype', 'ratio']).groupby('daytype').head(10)
-        r['delivery']['worst_high_demand'] = {t: d[['route_id', 'sched', 'obs', 'ratio', 'pax']].round(3).to_dict('records')
-                                              for t, d in w.groupby('daytype')}
-        r['overlap'] = overlap(con, days, 'gv0')
-        b = boardings(con, days, 'gv0', k['match_window_s'])
+        tr = trips(con, 'gva')
+        scs = sched(con, g)
+        seen = set(tr['route_id'])
+        rbt, sct, obt, dt = delivery(count_obs(tr), scs, seen, days, k, hol, 'trip_count')
+        unc = {t: int(sct[sct['daytype'] == t]['sched'].sum() - a['sched'].sum()) for t, a in rbt.groupby('daytype')}
+        refs = refstops(g, k)
+        rbp, _, obp, _ = delivery(observed_passes(con, 'gva', refs, k), sched_stops(con, g, refs), seen, days, k, hol, 'stop_pass')
+        print('passes done', round(time.time() - t0), flush=True)
+        sk, lr = sched_km(con, g)
+        rbk, _, obk, _ = delivery(obs_km(con, days, k), sk, seen, days, k, hol, 'bus_km', lr)
+        print('km done', round(time.time() - t0), flush=True)
+        rbk[COLS].round(4).to_csv(WORK / 'service_scale.csv', index=False)
+        od = top_od()
+        vh = vehicles(con, 'gva', dt)
+        r['delivery_all_days'] = {'method': 'bus_km', 'unit': 'km', 'dtc_routes_seen': int(rbk['route_id'].nunique()),
+                                  **delivery_stats(rbk, obk, dt, od, k, unc)}
+        for t, x in vh.items():
+            x['riders_per_bus_per_day_central'] = round(cfg()['ridership_daily']['central'] / x['mean'])
+        r['vehicles_per_day'] = {'note': 'distinct vehicle ids with any ping that IST day; compare [R3] about 756 riders per bus per day (DTC)', **vh}
+        r['cross_check_stop_pass'] = {'note': 'frequency at two reference stops per route', **delivery_stats(rbp, obp, dt, od, k, unc)}
+        r['cross_check_trip_count'] = {'note': 'distinct (vehicle, trip_id); inflated by fragmented trips', **delivery_stats(rbt, obt, dt, od, k, unc)}
+        r['fragmentation'] = {'note': 'GPS trips run much shorter than scheduled run times, so one bus journey is split into several (vehicle, trip_id) fragments and trip counts overstate service; see duration_ratio_all_routes_q10_25_50_75_90 and validation_weekday.duration_ratio'}
+        r['validation_weekday'] = validate(tr, rbt, rbp, rbk, g, [2031, 2140, 2174, 1931, 1932, 2183, 1151], hol)
+        r['pass_coverage'] = coverage(rbp, k)
+        d = tr.assign(w=tr['d'].map(lambda x: daytype(x, hol) == 'weekday'))
+        d = d[d['w']].groupby('route_id')['dur'].median() / runtimes(g)
+        r['duration_ratio_all_routes_q10_25_50_75_90'] = qs(d.dropna())
+        r['overlap'] = overlap(con, c3, 'gv0')
+        b = boardings(con, c3, 'gv0', k['match_window_s'])
         tot = one(con, 'SELECT count(*) FROM tx')[0]
         r['boarding'] = board_stats(b, tot, k['board_m'])
-        ev = propose(alias_evidence(con, g, days, k, k['match_window_s']), k)
+        ev = propose(alias_evidence(con, g, days, k, k['match_window_s'], 'gva'), k)
         ev.to_csv(WORK / 'gps_alias_evidence.csv', index=False)
         r['alias_proposed'] = int(ev['propose'].sum())
     r['runtime_s'] = round(time.time() - t0, 1)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / 'gps_checks.json').write_text(json.dumps(r, indent=1, default=float), encoding='utf-8')
-    print(json.dumps({x: y for x, y in r.items() if x != 'overlap'}, indent=1, default=float)[:6000])
+    print(json.dumps({x: y for x, y in r.items() if x not in ('overlap', 'cross_check_trip_count', 'cross_check_stop_pass')}, indent=1, default=float)[:7000])
     return r
