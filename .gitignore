@@ -1,0 +1,20 @@
+# data never goes to git (CLAUDE.md §2 rule 6)
+data/
+*.parquet
+*.db
+*.7z
+*.zip
+
+# local environment and tooling
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.playwright-mcp/
+.impeccable/config.local.json
+.impeccable/review/
+.impeccable/mocks/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
