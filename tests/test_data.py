@@ -15,6 +15,8 @@ TIX = WORK / 'tickets.parquet'
 PAT, PS, NET = WORK / 'patterns.parquet', WORK / 'pattern_stops.parquet', WORK / 'network.npz'
 FEED = RAW / 'gtfs' / 'stops.txt'
 OD, COV, PART = WORK / 'od.parquet', OUT / 'coverage.json', WORK / 'od_partial.parquet'
+CELLS, OPER = OUT / 'cells.parquet', OUT / 'operator.parquet'
+LV = ['MANY_SEATS_AVAILABLE', 'FEW_SEATS_AVAILABLE', 'STANDING_ROOM_ONLY', 'CRUSHED_STANDING_ROOM_ONLY']
 PLATE = re.compile(r'DL ?\d{1,2} ?[A-Z]{1,3} ?\d{4}')
 
 
@@ -129,7 +131,7 @@ def test_od_partial():
 def test_outputs_private():
     for p in OUT.rglob('*'):
         if p.suffix == '.parquet':
-            assert not {'v', 'vehicle', 'vehicle_number'} & set(pq.read_schema(p).names), p
+            assert not {'v', 'vehicle', 'vehicle_number', 'series'} & set(pq.read_schema(p).names), p
         elif p.suffix in ('.json', '.geojson', '.csv', '.md'):
             assert not PLATE.search(p.read_text(encoding='utf-8')), p
 
@@ -143,3 +145,37 @@ def test_gps_ground_truth():
     assert b['matched_share'] > 0.8
     assert b['board']['median_m'] < 300 and b['board']['within_500m'] > 0.75
     assert b['alight']['median_m'] > 2000
+
+
+# P3 crowding model
+@need(CELLS)
+def test_cells():
+    k = cfg()
+    c = pd.read_parquet(CELLS, columns=['n', 'N_sched', 'L_low', 'L', 'L_high', 'LF', 'seats', 'total', 'p_seat',
+                                        'level', 'flag'])
+    assert (c['n'] >= k['min_cell_n']).all()  # thin cells never published
+    ok = c['flag'].isna()
+    x = c[ok]
+    assert (x['L'] >= 0).all() and (x['L_low'] <= x['L']).all() and (x['L'] <= x['L_high']).all()
+    assert x['p_seat'].between(0, 1).all()
+    lf = x['LF'].astype(float)
+    exp = np.select([lf < k['levels']['many'], lf < k['levels']['few'], lf < x['total'] / x['seats']], LV[:3], LV[3])
+    assert (x['level'].to_numpy() == exp).mean() > 0.999  # level follows LF (CLAUDE.md §4.3 step 15)
+    f = c[~ok]
+    assert f['L'].isna().all() and (f['level'] == 'NO_DATA_AVAILABLE').all()  # flagged cells publish no load
+    assert (f.loc[f['flag'] == 'gap', 'N_sched'] == 0).all()
+
+
+@need(COV, CELLS)
+def test_load_sanity():
+    m = json.loads(COV.read_text(encoding='utf-8'))['load']
+    assert m['represent']['represented_pct'] > 95  # placed + imputed + scaled digital passengers
+    assert m['absurd_pct_of_cells_with_service_and_n'] < 2  # G3 regression floor; target < 1
+    assert m['schedule_gap_pax_pct'] < 5
+
+
+@need(OPER)
+def test_operator():
+    o = pd.read_parquet(OPER)
+    assert (o['gap'] >= 0).all() and (o['plus1_benefit'] >= -1e-6).all() and (o['F_req'] >= 0).all()
+    assert np.allclose(o['gap'], (o['F_req'] - o['F_sched']).clip(lower=0))
