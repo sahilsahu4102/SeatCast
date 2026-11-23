@@ -14,7 +14,7 @@ STEPS = {
     'plan': 'plan:cli',
     'serve': 'api:serve',
 }
-PIPE = ['day0', 'ingest', 'match', 'flows', 'load', 'checks']
+PIPE = ['day0', 'ingest', 'match', 'flows', 'load', 'checks', 'note']
 
 
 def step(name, args):

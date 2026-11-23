@@ -161,8 +161,9 @@ def model(c, E):
 
 def ratios(use):
     # GPS delivery ratio (observed / scheduled) per route, day type and hour band; None = timetable as is
-    f = WORK / 'service_scale.csv'
-    if not use or not f.exists():
+    # fresh from `run gps` if it ran, else the shipped aggregate (built from the Oct 2026 GPS; no vehicle data)
+    f = next((x for x in (WORK / 'service_scale.csv', ROOT / 'config' / 'service_scale.csv') if x.exists()), None)
+    if not use or f is None:
         return None
     r = pd.read_csv(f, dtype={'route_id': str})[['route_id', 'daytype', 'band', 'ratio']]
     return r.assign(ratio=r['ratio'].clip(*cfg()['gps']['ratio_clamp']))
