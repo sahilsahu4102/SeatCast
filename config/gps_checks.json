@@ -1,0 +1,1334 @@
+{
+ "days": 31,
+ "detail_days": [
+  "2026-10-14",
+  "2026-10-17",
+  "2026-10-11"
+ ],
+ "convert_s": 0.0,
+ "pings": 561643641,
+ "route_check": {
+  "n": 536593,
+  "in_gtfs": 0.9995138343013185,
+  "median_m": 137.29844980308528,
+  "within": 0.6463874854871383,
+  "within_500": 0.9026804300466089,
+  "control_median_m": 10649.866612887547,
+  "control_within": 0.022633541622794184,
+  "ok": true
+ },
+ "delivery_all_days": {
+  "method": "bus_km",
+  "unit": "km",
+  "dtc_routes_seen": 2277,
+  "saturday": {
+   "days": 5,
+   "route_bands": 8410,
+   "sched": 7554071,
+   "obs": 4751852,
+   "total_ratio": 0.629,
+   "q10_25_50_75_90": [
+    0.476,
+    0.623,
+    0.782,
+    0.932,
+    1.048
+   ],
+   "share_below_0.8": 0.532,
+   "share_above_1.2": 0.041,
+   "sched_trips_no_gps_routes": 24895,
+   "top_demand_largest_correction": [
+    {
+     "route_id": 2717,
+     "sched": 69661.468,
+     "obs": 22133.34,
+     "ratio": 0.327,
+     "pax": 10962.0
+    },
+    {
+     "route_id": 2716,
+     "sched": 39431.913,
+     "obs": 13910.025,
+     "ratio": 0.364,
+     "pax": 9167.0
+    },
+    {
+     "route_id": 2065,
+     "sched": 35725.609,
+     "obs": 14424.014,
+     "ratio": 0.41,
+     "pax": 9163.0
+    },
+    {
+     "route_id": 2007,
+     "sched": 23655.818,
+     "obs": 10339.858,
+     "ratio": 0.443,
+     "pax": 16908.0
+    },
+    {
+     "route_id": 2008,
+     "sched": 23339.913,
+     "obs": 10384.572,
+     "ratio": 0.451,
+     "pax": 18725.0
+    },
+    {
+     "route_id": 2034,
+     "sched": 16905.565,
+     "obs": 8189.367,
+     "ratio": 0.493,
+     "pax": 14589.0
+    },
+    {
+     "route_id": 1924,
+     "sched": 12663.868,
+     "obs": 6276.364,
+     "ratio": 0.5,
+     "pax": 9609.0
+    },
+    {
+     "route_id": 1923,
+     "sched": 10619.28,
+     "obs": 5586.886,
+     "ratio": 0.533,
+     "pax": 10779.0
+    },
+    {
+     "route_id": 2232,
+     "sched": 36673.28,
+     "obs": 20357.892,
+     "ratio": 0.56,
+     "pax": 15027.0
+    },
+    {
+     "route_id": 2031,
+     "sched": 15438.855,
+     "obs": 8575.669,
+     "ratio": 0.565,
+     "pax": 14309.0
+    }
+   ],
+   "daily_network_ratio": {
+    "mean": 0.632,
+    "std": 0.036,
+    "min": 0.575,
+    "max": 0.67,
+    "cv": 0.057,
+    "by_day": {
+     "2026-10-03": 0.67,
+     "2026-10-10": 0.575,
+     "2026-10-17": 0.632,
+     "2026-10-24": 0.654,
+     "2026-10-31": 0.628
+    }
+   }
+  },
+  "sunday": {
+   "days": 6,
+   "route_bands": 8466,
+   "sched": 9064885,
+   "obs": 6002452,
+   "total_ratio": 0.662,
+   "q10_25_50_75_90": [
+    0.463,
+    0.625,
+    0.793,
+    0.946,
+    1.062
+   ],
+   "share_below_0.8": 0.511,
+   "share_above_1.2": 0.043,
+   "sched_trips_no_gps_routes": 29874,
+   "top_demand_largest_correction": [
+    {
+     "route_id": 2717,
+     "sched": 83593.762,
+     "obs": 28544.868,
+     "ratio": 0.349,
+     "pax": 10962.0
+    },
+    {
+     "route_id": 2716,
+     "sched": 47318.296,
+     "obs": 16678.605,
+     "ratio": 0.362,
+     "pax": 9167.0
+    },
+    {
+     "route_id": 2065,
+     "sched": 42870.731,
+     "obs": 17986.687,
+     "ratio": 0.425,
+     "pax": 9163.0
+    },
+    {
+     "route_id": 2007,
+     "sched": 28386.982,
+     "obs": 14663.695,
+     "ratio": 0.521,
+     "pax": 16908.0
+    },
+    {
+     "route_id": 2008,
+     "sched": 28007.896,
+     "obs": 14631.309,
+     "ratio": 0.527,
+     "pax": 18725.0
+    },
+    {
+     "route_id": 2034,
+     "sched": 20286.678,
+     "obs": 10829.93,
+     "ratio": 0.54,
+     "pax": 14589.0
+    },
+    {
+     "route_id": 1923,
+     "sched": 12743.136,
+     "obs": 7637.754,
+     "ratio": 0.604,
+     "pax": 10779.0
+    },
+    {
+     "route_id": 2098,
+     "sched": 35343.71,
+     "obs": 21271.83,
+     "ratio": 0.606,
+     "pax": 12314.0
+    },
+    {
+     "route_id": 568,
+     "sched": 16936.506,
+     "obs": 10096.692,
+     "ratio": 0.607,
+     "pax": 12186.0
+    },
+    {
+     "route_id": 2232,
+     "sched": 44007.936,
+     "obs": 26578.301,
+     "ratio": 0.607,
+     "pax": 15027.0
+    }
+   ],
+   "daily_network_ratio": {
+    "mean": 0.664,
+    "std": 0.038,
+    "min": 0.607,
+    "max": 0.709,
+    "cv": 0.057,
+    "by_day": {
+     "2026-10-02": 0.701,
+     "2026-10-04": 0.709,
+     "2026-10-11": 0.607,
+     "2026-10-18": 0.658,
+     "2026-10-20": 0.641,
+     "2026-10-25": 0.67
+    }
+   }
+  },
+  "weekday": {
+   "days": 20,
+   "route_bands": 8681,
+   "sched": 30216284,
+   "obs": 18723199,
+   "total_ratio": 0.62,
+   "q10_25_50_75_90": [
+    0.352,
+    0.52,
+    0.719,
+    0.896,
+    1.057
+   ],
+   "share_below_0.8": 0.613,
+   "share_above_1.2": 0.056,
+   "sched_trips_no_gps_routes": 99580,
+   "top_demand_largest_correction": [
+    {
+     "route_id": 2717,
+     "sched": 278645.872,
+     "obs": 88619.328,
+     "ratio": 0.32,
+     "pax": 10962.0
+    },
+    {
+     "route_id": 2716,
+     "sched": 157727.652,
+     "obs": 54626.414,
+     "ratio": 0.349,
+     "pax": 9167.0
+    },
+    {
+     "route_id": 2065,
+     "sched": 142902.437,
+     "obs": 55895.933,
+     "ratio": 0.393,
+     "pax": 9163.0
+    },
+    {
+     "route_id": 2007,
+     "sched": 94623.273,
+     "obs": 42306.688,
+     "ratio": 0.449,
+     "pax": 16908.0
+    },
+    {
+     "route_id": 2008,
+     "sched": 93359.654,
+     "obs": 42108.607,
+     "ratio": 0.453,
+     "pax": 18725.0
+    },
+    {
+     "route_id": 2034,
+     "sched": 67622.259,
+     "obs": 33694.048,
+     "ratio": 0.5,
+     "pax": 14589.0
+    },
+    {
+     "route_id": 1924,
+     "sched": 50655.474,
+     "obs": 25446.503,
+     "ratio": 0.504,
+     "pax": 9609.0
+    },
+    {
+     "route_id": 1967,
+     "sched": 42968.374,
+     "obs": 21551.478,
+     "ratio": 0.504,
+     "pax": 9633.0
+    },
+    {
+     "route_id": 1923,
+     "sched": 42477.119,
+     "obs": 21342.828,
+     "ratio": 0.504,
+     "pax": 10779.0
+    },
+    {
+     "route_id": 2098,
+     "sched": 117812.367,
+     "obs": 62812.0,
+     "ratio": 0.535,
+     "pax": 12314.0
+    }
+   ],
+   "daily_network_ratio": {
+    "mean": 0.623,
+    "std": 0.034,
+    "min": 0.544,
+    "max": 0.658,
+    "cv": 0.054,
+    "by_day": {
+     "2026-10-01": 0.645,
+     "2026-10-05": 0.658,
+     "2026-10-06": 0.637,
+     "2026-10-07": 0.544,
+     "2026-10-08": 0.65,
+     "2026-10-09": 0.614,
+     "2026-10-12": 0.546,
+     "2026-10-13": 0.6,
+     "2026-10-14": 0.607,
+     "2026-10-15": 0.627,
+     "2026-10-16": 0.611,
+     "2026-10-19": 0.644,
+     "2026-10-21": 0.646,
+     "2026-10-22": 0.642,
+     "2026-10-23": 0.655,
+     "2026-10-26": 0.658,
+     "2026-10-27": 0.635,
+     "2026-10-28": 0.635,
+     "2026-10-29": 0.621,
+     "2026-10-30": 0.58
+    }
+   }
+  }
+ },
+ "vehicles_per_day": {
+  "note": "distinct vehicle ids with any ping that IST day; compare [R3] about 756 riders per bus per day (DTC)",
+  "saturday": {
+   "mean": 6174,
+   "min": 5869,
+   "max": 6327,
+   "riders_per_bus_per_day_central": 641
+  },
+  "sunday": {
+   "mean": 6061,
+   "min": 5628,
+   "max": 6221,
+   "riders_per_bus_per_day_central": 653
+  },
+  "weekday": {
+   "mean": 6197,
+   "min": 5847,
+   "max": 6328,
+   "riders_per_bus_per_day_central": 639
+  }
+ },
+ "cross_check_stop_pass": {
+  "note": "frequency at two reference stops per route",
+  "saturday": {
+   "days": 5,
+   "route_bands": 8551,
+   "sched": 722940,
+   "obs": 423461,
+   "total_ratio": 0.586,
+   "q10_25_50_75_90": [
+    0.343,
+    0.5,
+    0.687,
+    0.867,
+    1.0
+   ],
+   "share_below_0.8": 0.64,
+   "share_above_1.2": 0.035,
+   "sched_trips_no_gps_routes": 24895,
+   "top_demand_largest_correction": [
+    {
+     "route_id": 2717,
+     "sched": 1280,
+     "obs": 416.0,
+     "ratio": 0.33,
+     "pax": 10962.0
+    },
+    {
+     "route_id": 2034,
+     "sched": 1160,
+     "obs": 391.0,
+     "ratio": 0.343,
+     "pax": 14589.0
+    },
+    {
+     "route_id": 2716,
+     "sched": 665,
+     "obs": 237.0,
+     "ratio": 0.366,
+     "pax": 9167.0
+    },
+    {
+     "route_id": 2232,
+     "sched": 1850,
+     "obs": 700.0,
+     "ratio": 0.382,
+     "pax": 15027.0
+    },
+    {
+     "route_id": 2065,
+     "sched": 1910,
+     "obs": 741.0,
+     "ratio": 0.391,
+     "pax": 9163.0
+    },
+    {
+     "route_id": 2008,
+     "sched": 1850,
+     "obs": 777.0,
+     "ratio": 0.423,
+     "pax": 18725.0
+    },
+    {
+     "route_id": 2007,
+     "sched": 1670,
+     "obs": 772.0,
+     "ratio": 0.465,
+     "pax": 16908.0
+    },
+    {
+     "route_id": 2343,
+     "sched": 1210,
+     "obs": 573.0,
+     "ratio": 0.478,
+     "pax": 12678.0
+    },
+    {
+     "route_id": 2098,
+     "sched": 1520,
+     "obs": 746.0,
+     "ratio": 0.494,
+     "pax": 12314.0
+    },
+    {
+     "route_id": 1923,
+     "sched": 1290,
+     "obs": 633.0,
+     "ratio": 0.495,
+     "pax": 10779.0
+    }
+   ],
+   "daily_network_ratio": {
+    "mean": 0.59,
+    "std": 0.039,
+    "min": 0.523,
+    "max": 0.624,
+    "cv": 0.066,
+    "by_day": {
+     "2026-10-03": 0.624,
+     "2026-10-10": 0.523,
+     "2026-10-17": 0.594,
+     "2026-10-24": 0.611,
+     "2026-10-31": 0.597
+    }
+   }
+  },
+  "sunday": {
+   "days": 6,
+   "route_bands": 8551,
+   "sched": 867528,
+   "obs": 532888,
+   "total_ratio": 0.614,
+   "q10_25_50_75_90": [
+    0.329,
+    0.483,
+    0.695,
+    0.888,
+    1.021
+   ],
+   "share_below_0.8": 0.633,
+   "share_above_1.2": 0.036,
+   "sched_trips_no_gps_routes": 29874,
+   "top_demand_largest_correction": [
+    {
+     "route_id": 2717,
+     "sched": 1536,
+     "obs": 491.0,
+     "ratio": 0.324,
+     "pax": 10962.0
+    },
+    {
+     "route_id": 2034,
+     "sched": 1392,
+     "obs": 456.0,
+     "ratio": 0.332,
+     "pax": 14589.0
+    },
+    {
+     "route_id": 2716,
+     "sched": 798,
+     "obs": 265.0,
+     "ratio": 0.34,
+     "pax": 9167.0
+    },
+    {
+     "route_id": 2065,
+     "sched": 2292,
+     "obs": 871.0,
+     "ratio": 0.383,
+     "pax": 9163.0
+    },
+    {
+     "route_id": 2232,
+     "sched": 2220,
+     "obs": 894.0,
+     "ratio": 0.405,
+     "pax": 15027.0
+    },
+    {
+     "route_id": 2008,
+     "sched": 2220,
+     "obs": 1057.0,
+     "ratio": 0.478,
+     "pax": 18725.0
+    },
+    {
+     "route_id": 2097,
+     "sched": 1254,
+     "obs": 644.0,
+     "ratio": 0.517,
+     "pax": 12568.0
+    },
+    {
+     "route_id": 2098,
+     "sched": 1824,
+     "obs": 968.0,
+     "ratio": 0.533,
+     "pax": 12314.0
+    },
+    {
+     "route_id": 2203,
+     "sched": 1686,
+     "obs": 901.0,
+     "ratio": 0.537,
+     "pax": 19009.0
+    },
+    {
+     "route_id": 2007,
+     "sched": 2004,
+     "obs": 1079.0,
+     "ratio": 0.541,
+     "pax": 16908.0
+    }
+   ],
+   "daily_network_ratio": {
+    "mean": 0.618,
+    "std": 0.035,
+    "min": 0.565,
+    "max": 0.657,
+    "cv": 0.057,
+    "by_day": {
+     "2026-10-02": 0.65,
+     "2026-10-04": 0.657,
+     "2026-10-11": 0.565,
+     "2026-10-18": 0.608,
+     "2026-10-20": 0.595,
+     "2026-10-25": 0.631
+    }
+   }
+  },
+  "weekday": {
+   "days": 20,
+   "route_bands": 8551,
+   "sched": 2891760,
+   "obs": 1680177,
+   "total_ratio": 0.581,
+   "q10_25_50_75_90": [
+    0.236,
+    0.41,
+    0.633,
+    0.831,
+    0.981
+   ],
+   "share_below_0.8": 0.705,
+   "share_above_1.2": 0.04,
+   "sched_trips_no_gps_routes": 99580,
+   "top_demand_largest_correction": [
+    {
+     "route_id": 2717,
+     "sched": 5120,
+     "obs": 1570.0,
+     "ratio": 0.308,
+     "pax": 10962.0
+    },
+    {
+     "route_id": 2716,
+     "sched": 2660,
+     "obs": 950.0,
+     "ratio": 0.36,
+     "pax": 9167.0
+    },
+    {
+     "route_id": 2232,
+     "sched": 7400,
+     "obs": 2795.0,
+     "ratio": 0.379,
+     "pax": 15027.0
+    },
+    {
+     "route_id": 2065,
+     "sched": 7640,
+     "obs": 2903.0,
+     "ratio": 0.381,
+     "pax": 9163.0
+    },
+    {
+     "route_id": 2034,
+     "sched": 4640,
+     "obs": 1903.0,
+     "ratio": 0.411,
+     "pax": 14589.0
+    },
+    {
+     "route_id": 2008,
+     "sched": 7400,
+     "obs": 3102.0,
+     "ratio": 0.42,
+     "pax": 18725.0
+    },
+    {
+     "route_id": 1923,
+     "sched": 5160,
+     "obs": 2406.0,
+     "ratio": 0.467,
+     "pax": 10779.0
+    },
+    {
+     "route_id": 2098,
+     "sched": 6080,
+     "obs": 2861.0,
+     "ratio": 0.471,
+     "pax": 12314.0
+    },
+    {
+     "route_id": 2007,
+     "sched": 6680,
+     "obs": 3150.0,
+     "ratio": 0.472,
+     "pax": 16908.0
+    },
+    {
+     "route_id": 2343,
+     "sched": 4840,
+     "obs": 2323.0,
+     "ratio": 0.481,
+     "pax": 12678.0
+    }
+   ],
+   "daily_network_ratio": {
+    "mean": 0.585,
+    "std": 0.033,
+    "min": 0.503,
+    "max": 0.626,
+    "cv": 0.057,
+    "by_day": {
+     "2026-10-01": 0.607,
+     "2026-10-05": 0.614,
+     "2026-10-06": 0.595,
+     "2026-10-07": 0.503,
+     "2026-10-08": 0.606,
+     "2026-10-09": 0.579,
+     "2026-10-12": 0.514,
+     "2026-10-13": 0.57,
+     "2026-10-14": 0.575,
+     "2026-10-15": 0.588,
+     "2026-10-16": 0.577,
+     "2026-10-19": 0.6,
+     "2026-10-21": 0.606,
+     "2026-10-22": 0.605,
+     "2026-10-23": 0.626,
+     "2026-10-26": 0.622,
+     "2026-10-27": 0.603,
+     "2026-10-28": 0.602,
+     "2026-10-29": 0.581,
+     "2026-10-30": 0.536
+    }
+   }
+  }
+ },
+ "cross_check_trip_count": {
+  "note": "distinct (vehicle, trip_id); inflated by fragmented trips",
+  "saturday": {
+   "days": 5,
+   "route_bands": 8337,
+   "sched": 376890,
+   "obs": 395702,
+   "total_ratio": 1.05,
+   "q10_25_50_75_90": [
+    0.622,
+    0.8,
+    1.0,
+    1.24,
+    1.584
+   ],
+   "share_below_0.8": 0.247,
+   "share_above_1.2": 0.267,
+   "sched_trips_no_gps_routes": 24895,
+   "top_demand_largest_correction": [
+    {
+     "route_id": 2183,
+     "sched": 530,
+     "obs": 1112.0,
+     "ratio": 2.078,
+     "pax": 9856.0
+    },
+    {
+     "route_id": 2031,
+     "sched": 440,
+     "obs": 832.0,
+     "ratio": 1.871,
+     "pax": 14309.0
+    },
+    {
+     "route_id": 1931,
+     "sched": 590,
+     "obs": 1072.0,
+     "ratio": 1.803,
+     "pax": 14472.0
+    },
+    {
+     "route_id": 1932,
+     "sched": 560,
+     "obs": 1004.0,
+     "ratio": 1.779,
+     "pax": 13962.0
+    },
+    {
+     "route_id": 2174,
+     "sched": 205,
+     "obs": 322.0,
+     "ratio": 1.544,
+     "pax": 12822.0
+    },
+    {
+     "route_id": 2205,
+     "sched": 755,
+     "obs": 1168.0,
+     "ratio": 1.54,
+     "pax": 10407.0
+    },
+    {
+     "route_id": 2182,
+     "sched": 805,
+     "obs": 1242.0,
+     "ratio": 1.536,
+     "pax": 11236.0
+    },
+    {
+     "route_id": 2206,
+     "sched": 795,
+     "obs": 1221.0,
+     "ratio": 1.529,
+     "pax": 9721.0
+    },
+    {
+     "route_id": 1416,
+     "sched": 190,
+     "obs": 292.0,
+     "ratio": 1.51,
+     "pax": 9705.0
+    },
+    {
+     "route_id": 2232,
+     "sched": 925,
+     "obs": 1392.0,
+     "ratio": 1.499,
+     "pax": 15027.0
+    }
+   ],
+   "daily_network_ratio": {
+    "mean": 1.083,
+    "std": 0.176,
+    "min": 0.879,
+    "max": 1.354,
+    "cv": 0.162,
+    "by_day": {
+     "2026-10-03": 1.062,
+     "2026-10-10": 0.879,
+     "2026-10-17": 1.0,
+     "2026-10-24": 1.354,
+     "2026-10-31": 1.12
+    }
+   }
+  },
+  "sunday": {
+   "days": 6,
+   "route_bands": 8337,
+   "sched": 452268,
+   "obs": 423169,
+   "total_ratio": 0.936,
+   "q10_25_50_75_90": [
+    0.545,
+    0.714,
+    0.926,
+    1.125,
+    1.414
+   ],
+   "share_below_0.8": 0.336,
+   "share_above_1.2": 0.196,
+   "sched_trips_no_gps_routes": 29874,
+   "top_demand_largest_correction": [
+    {
+     "route_id": 2183,
+     "sched": 636,
+     "obs": 1263.0,
+     "ratio": 1.971,
+     "pax": 9856.0
+    },
+    {
+     "route_id": 2031,
+     "sched": 528,
+     "obs": 892.0,
+     "ratio": 1.677,
+     "pax": 14309.0
+    },
+    {
+     "route_id": 1932,
+     "sched": 672,
+     "obs": 1116.0,
+     "ratio": 1.651,
+     "pax": 13962.0
+    },
+    {
+     "route_id": 1931,
+     "sched": 708,
+     "obs": 1111.0,
+     "ratio": 1.561,
+     "pax": 14472.0
+    },
+    {
+     "route_id": 2206,
+     "sched": 954,
+     "obs": 1398.0,
+     "ratio": 1.461,
+     "pax": 9721.0
+    },
+    {
+     "route_id": 2182,
+     "sched": 966,
+     "obs": 1378.0,
+     "ratio": 1.422,
+     "pax": 11236.0
+    },
+    {
+     "route_id": 2232,
+     "sched": 1110,
+     "obs": 1545.0,
+     "ratio": 1.388,
+     "pax": 15027.0
+    },
+    {
+     "route_id": 2229,
+     "sched": 1038,
+     "obs": 1424.0,
+     "ratio": 1.368,
+     "pax": 15547.0
+    },
+    {
+     "route_id": 2174,
+     "sched": 246,
+     "obs": 338.0,
+     "ratio": 1.359,
+     "pax": 12822.0
+    },
+    {
+     "route_id": 2205,
+     "sched": 906,
+     "obs": 1212.0,
+     "ratio": 1.334,
+     "pax": 10407.0
+    }
+   ],
+   "daily_network_ratio": {
+    "mean": 0.965,
+    "std": 0.044,
+    "min": 0.892,
+    "max": 1.003,
+    "cv": 0.046,
+    "by_day": {
+     "2026-10-02": 1.0,
+     "2026-10-04": 0.996,
+     "2026-10-11": 0.892,
+     "2026-10-18": 0.962,
+     "2026-10-20": 0.935,
+     "2026-10-25": 1.003
+    }
+   }
+  },
+  "weekday": {
+   "days": 20,
+   "route_bands": 8337,
+   "sched": 1507560,
+   "obs": 1569922,
+   "total_ratio": 1.041,
+   "q10_25_50_75_90": [
+    0.505,
+    0.743,
+    0.989,
+    1.271,
+    1.712
+   ],
+   "share_below_0.8": 0.296,
+   "share_above_1.2": 0.298,
+   "sched_trips_no_gps_routes": 99580,
+   "top_demand_largest_correction": [
+    {
+     "route_id": 2031,
+     "sched": 1760,
+     "obs": 3652.0,
+     "ratio": 2.069,
+     "pax": 14309.0
+    },
+    {
+     "route_id": 2183,
+     "sched": 2120,
+     "obs": 4038.0,
+     "ratio": 1.9,
+     "pax": 9856.0
+    },
+    {
+     "route_id": 1932,
+     "sched": 2240,
+     "obs": 4125.0,
+     "ratio": 1.838,
+     "pax": 13962.0
+    },
+    {
+     "route_id": 1931,
+     "sched": 2360,
+     "obs": 4098.0,
+     "ratio": 1.733,
+     "pax": 14472.0
+    },
+    {
+     "route_id": 2174,
+     "sched": 820,
+     "obs": 1370.0,
+     "ratio": 1.663,
+     "pax": 12822.0
+    },
+    {
+     "route_id": 2140,
+     "sched": 2260,
+     "obs": 3650.0,
+     "ratio": 1.612,
+     "pax": 14399.0
+    },
+    {
+     "route_id": 2232,
+     "sched": 3700,
+     "obs": 5803.0,
+     "ratio": 1.567,
+     "pax": 15027.0
+    },
+    {
+     "route_id": 2206,
+     "sched": 3180,
+     "obs": 4977.0,
+     "ratio": 1.563,
+     "pax": 9721.0
+    },
+    {
+     "route_id": 2229,
+     "sched": 3460,
+     "obs": 5340.0,
+     "ratio": 1.542,
+     "pax": 15547.0
+    },
+    {
+     "route_id": 2205,
+     "sched": 3020,
+     "obs": 4570.0,
+     "ratio": 1.512,
+     "pax": 10407.0
+    }
+   ],
+   "daily_network_ratio": {
+    "mean": 1.075,
+    "std": 0.17,
+    "min": 0.85,
+    "max": 1.387,
+    "cv": 0.158,
+    "by_day": {
+     "2026-10-01": 1.055,
+     "2026-10-05": 1.078,
+     "2026-10-06": 1.029,
+     "2026-10-07": 0.85,
+     "2026-10-08": 0.964,
+     "2026-10-09": 0.991,
+     "2026-10-12": 0.854,
+     "2026-10-13": 0.955,
+     "2026-10-14": 0.96,
+     "2026-10-15": 1.025,
+     "2026-10-16": 0.908,
+     "2026-10-19": 0.983,
+     "2026-10-21": 0.953,
+     "2026-10-22": 1.324,
+     "2026-10-23": 1.387,
+     "2026-10-26": 1.2,
+     "2026-10-27": 1.342,
+     "2026-10-28": 1.354,
+     "2026-10-29": 1.073,
+     "2026-10-30": 1.219
+    }
+   }
+  }
+ },
+ "fragmentation": {
+  "note": "GPS trips run much shorter than scheduled run times, so one bus journey is split into several (vehicle, trip_id) fragments and trip counts overstate service; see duration_ratio_all_routes_q10_25_50_75_90 and validation_weekday.duration_ratio"
+ },
+ "validation_weekday": {
+  "2031": {
+   "bus_km_ratio_raw": 0.6,
+   "bus_km_ratio": 0.61,
+   "count_ratio": 2.08,
+   "duration_ratio": 0.34,
+   "count_x_duration": 0.7,
+   "pass_ratio_raw": 0.62,
+   "pass_ratio_shrunk": 0.62,
+   "pass_sched_per_day": 162.0
+  },
+  "2140": {
+   "bus_km_ratio_raw": 0.64,
+   "bus_km_ratio": 0.65,
+   "count_ratio": 1.62,
+   "duration_ratio": 0.55,
+   "count_x_duration": 0.89,
+   "pass_ratio_raw": 0.65,
+   "pass_ratio_shrunk": 0.65,
+   "pass_sched_per_day": 218.0
+  },
+  "2174": {
+   "bus_km_ratio_raw": 0.76,
+   "bus_km_ratio": 0.77,
+   "count_ratio": 1.67,
+   "duration_ratio": 0.4,
+   "count_x_duration": 0.67,
+   "pass_ratio_raw": 0.71,
+   "pass_ratio_shrunk": 0.71,
+   "pass_sched_per_day": 81.0
+  },
+  "1931": {
+   "bus_km_ratio_raw": 0.88,
+   "bus_km_ratio": 0.89,
+   "count_ratio": 1.74,
+   "duration_ratio": 0.74,
+   "count_x_duration": 1.28,
+   "pass_ratio_raw": 0.75,
+   "pass_ratio_shrunk": 0.75,
+   "pass_sched_per_day": 204.0
+  },
+  "1932": {
+   "bus_km_ratio_raw": 0.86,
+   "bus_km_ratio": 0.86,
+   "count_ratio": 1.84,
+   "duration_ratio": 0.68,
+   "count_x_duration": 1.24,
+   "pass_ratio_raw": 0.85,
+   "pass_ratio_shrunk": 0.85,
+   "pass_sched_per_day": 211.0
+  },
+  "2183": {
+   "bus_km_ratio_raw": 0.87,
+   "bus_km_ratio": 0.87,
+   "count_ratio": 1.9,
+   "duration_ratio": 0.74,
+   "count_x_duration": 1.4,
+   "pass_ratio_raw": 0.84,
+   "pass_ratio_shrunk": 0.84,
+   "pass_sched_per_day": 199.0
+  },
+  "1151": {
+   "bus_km_ratio_raw": 0.79,
+   "bus_km_ratio": 0.8,
+   "count_ratio": 1.33,
+   "duration_ratio": 0.7,
+   "count_x_duration": 0.94,
+   "pass_ratio_raw": 0.75,
+   "pass_ratio_shrunk": 0.75,
+   "pass_sched_per_day": 68.0
+  }
+ },
+ "pass_coverage": {
+  "routes": 2277,
+  "routes_below_min_passes_per_day": 464,
+  "share_routes": 0.204,
+  "share_weekday_sched_passes": 0.036,
+  "min_passes_per_day": 5,
+  "passes_per_day_q10_25_50_75_90": [
+   1.48,
+   6.85,
+   20.25,
+   48.65,
+   96.84
+  ]
+ },
+ "duration_ratio_all_routes_q10_25_50_75_90": [
+  0.39,
+  0.61,
+  0.891,
+  1.212,
+  1.641
+ ],
+ "overlap": {
+  "ticket_vehicle_days": 16799,
+  "tickets": 118606,
+  "passengers": 128930,
+  "share_vehicle_days_in_gps": 0.9793,
+  "share_tickets_in_gps": 0.9932,
+  "share_passengers_in_gps": 0.9933,
+  "share_vehicles_in_gps_any_day": 0.9889,
+  "share_tickets_null_vehicle": 0.4495,
+  "by_series": {
+   "DL51EV": {
+    "vehicle_days": 3341,
+    "share_passengers_in_gps": 0.9991
+   },
+   "DL1PD": {
+    "vehicle_days": 11255,
+    "share_passengers_in_gps": 0.9928
+   },
+   "DL51GD": {
+    "vehicle_days": 1819,
+    "share_passengers_in_gps": 0.9961
+   },
+   "DL1PE": {
+    "vehicle_days": 384,
+    "share_passengers_in_gps": 0.8961
+   }
+  }
+ },
+ "boarding": {
+  "tickets_total": 109693,
+  "matched": 95158,
+  "matched_share": 0.8675,
+  "lag_median_s": 8.0,
+  "board": {
+   "n": 95158,
+   "median_m": 218.0,
+   "p75_m": 418.0,
+   "p90_m": 740.0,
+   "within_300m": 0.6228,
+   "within_500m": 0.81
+  },
+  "alight": {
+   "n": 95158,
+   "median_m": 4308.0,
+   "p75_m": 6972.0,
+   "p90_m": 11194.0,
+   "within_300m": 0.0032,
+   "within_500m": 0.0063
+  },
+  "share_ping_on_ticket_route": 0.9524,
+  "board_same_route": {
+   "n": 90632,
+   "median_m": 215.0,
+   "p75_m": 411.0,
+   "p90_m": 709.0,
+   "within_300m": 0.6285,
+   "within_500m": 0.817
+  },
+  "by_rung_board": {
+   "a": {
+    "n": 65948,
+    "median_m": 209.0,
+    "p75_m": 401.0,
+    "p90_m": 690.0,
+    "within_300m": 0.6394,
+    "within_500m": 0.8249
+   },
+   "b": {
+    "n": 1091,
+    "median_m": 186.0,
+    "p75_m": 343.0,
+    "p90_m": 538.0,
+    "within_300m": 0.6957,
+    "within_500m": 0.8845
+   },
+   "c": {
+    "n": 11351,
+    "median_m": 219.0,
+    "p75_m": 425.0,
+    "p90_m": 813.0,
+    "within_300m": 0.6223,
+    "within_500m": 0.7997
+   },
+   "d": {
+    "n": 9809,
+    "median_m": 247.0,
+    "p75_m": 479.0,
+    "p90_m": 920.0,
+    "within_300m": 0.5717,
+    "within_500m": 0.7655
+   },
+   "e": {
+    "n": 4197,
+    "median_m": 268.0,
+    "p75_m": 513.0,
+    "p90_m": 905.0,
+    "within_300m": 0.5359,
+    "within_500m": 0.7398
+   },
+   "f": {
+    "n": 2762,
+    "median_m": 294.0,
+    "p75_m": 526.0,
+    "p90_m": 924.0,
+    "within_300m": 0.5112,
+    "within_500m": 0.7332
+   }
+  },
+  "by_rung_board_same_route": {
+   "a": {
+    "n": 62773,
+    "median_m": 206.0,
+    "p75_m": 393.0,
+    "p90_m": 661.0,
+    "within_300m": 0.6462,
+    "within_500m": 0.8326
+   },
+   "b": {
+    "n": 1043,
+    "median_m": 180.0,
+    "p75_m": 334.0,
+    "p90_m": 522.0,
+    "within_300m": 0.7076,
+    "within_500m": 0.8936
+   },
+   "c": {
+    "n": 10725,
+    "median_m": 217.0,
+    "p75_m": 419.0,
+    "p90_m": 777.0,
+    "within_300m": 0.6245,
+    "within_500m": 0.8052
+   },
+   "d": {
+    "n": 9440,
+    "median_m": 243.0,
+    "p75_m": 473.0,
+    "p90_m": 869.0,
+    "within_300m": 0.5771,
+    "within_500m": 0.7716
+   },
+   "e": {
+    "n": 4037,
+    "median_m": 267.0,
+    "p75_m": 508.0,
+    "p90_m": 880.0,
+    "within_300m": 0.5373,
+    "within_500m": 0.7444
+   },
+   "f": {
+    "n": 2614,
+    "median_m": 292.0,
+    "p75_m": 521.0,
+    "p90_m": 901.0,
+    "within_300m": 0.5145,
+    "within_500m": 0.7372
+   }
+  },
+  "by_rung_alight": {
+   "a": {
+    "n": 66008,
+    "median_m": 4265.0,
+    "p75_m": 6961.0,
+    "p90_m": 11149.0,
+    "within_300m": 0.0032,
+    "within_500m": 0.0064
+   },
+   "b": {
+    "n": 825,
+    "median_m": 3782.0,
+    "p75_m": 5391.0,
+    "p90_m": 9041.0,
+    "within_300m": 0.0024,
+    "within_500m": 0.0061
+   },
+   "c": {
+    "n": 11053,
+    "median_m": 4505.0,
+    "p75_m": 7443.0,
+    "p90_m": 12201.0,
+    "within_300m": 0.0031,
+    "within_500m": 0.0053
+   },
+   "d": {
+    "n": 9826,
+    "median_m": 4206.0,
+    "p75_m": 6457.0,
+    "p90_m": 10143.0,
+    "within_300m": 0.0034,
+    "within_500m": 0.0064
+   },
+   "e": {
+    "n": 4033,
+    "median_m": 4685.0,
+    "p75_m": 7054.0,
+    "p90_m": 11168.0,
+    "within_300m": 0.0037,
+    "within_500m": 0.0072
+   },
+   "f": {
+    "n": 3413,
+    "median_m": 4776.0,
+    "p75_m": 7582.0,
+    "p90_m": 12080.0,
+    "within_300m": 0.0032,
+    "within_500m": 0.0064
+   }
+  }
+ },
+ "alias_proposed": 29,
+ "runtime_s": 154.6
+}

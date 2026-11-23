@@ -110,7 +110,7 @@ UP share of flow on the top 20 routes by weekday flow, morning window 7:00-10:00
 | 988DOWN | 0.46 | 83,213 |
 | 181ADOWN | 0.62 | 82,869 |
 | 546UP | 0.60 | 80,401 |
-| YMSCW | 0.66 | 78,605 |
+| YMSCW | 0.66 | 78,595 |
 | 107UP | 0.58 | 77,060 |
 | 929DOWN | 0.63 | 76,911 |
 | 440ADOWN | 0.68 | 76,629 |
@@ -131,7 +131,7 @@ Days flagged (beyond the configured deviation from the same-weekday median): non
 
 ![Load factor distribution](img/lf_hist.png)
 
-Publishable cells: 2,312,462 of 4,411,005. Load factor p10 / p50 / p90 / p99 = 0.241 / 0.785 / 2.743 / 4.865.
+Publishable cells: 2,312,450 of 4,411,005. Load factor p10 / p50 / p90 / p99 = 0.241 / 0.785 / 2.743 / 4.865.
 Over seats: 40.19% of cells. Over total capacity: 22.94%. Censored at 3 x total capacity: 3.037% of cells (these show as the top load factor, which is the censor cap and explains the repeated top values below).
 
 Routes with most censored cells:
@@ -166,7 +166,7 @@ Ten most crowded route-hours by standee-minutes:
 
 ## 10. Where estimates are weakest
 
-- Low-n cells: 1,567,103 of 4,411,005 cells have fewer than 5 sampled passengers and are shown as limited data. Of the publishable cells, confidence is high 24.21%, medium 42.72%, low 33.07%.
+- Low-n cells: 1,567,115 of 4,411,005 cells have fewer than 5 sampled passengers and are shown as limited data. Of the publishable cells, confidence is high 24.21%, medium 42.72%, low 33.07%.
 - Schedule gaps: 531,440 cells carry passengers but no scheduled bus (2.62% of passengers).
 - Hours with the highest low-confidence share: 0:00 (54%), 4:00 (53%), 3:00 (50%).
 
@@ -195,23 +195,23 @@ Per hour of day, publishable cells:
 | 3 | 1,703 | 50% | 13.4 |
 | 4 | 5,451 | 53% | 16.0 |
 | 5 | 33,300 | 42% | 22.8 |
-| 6 | 83,905 | 36% | 28.7 |
-| 7 | 136,635 | 32% | 40.5 |
+| 6 | 83,900 | 36% | 28.7 |
+| 7 | 136,634 | 32% | 40.5 |
 | 8 | 184,646 | 29% | 62.2 |
-| 9 | 197,539 | 28% | 69.9 |
+| 9 | 197,538 | 28% | 69.9 |
 | 10 | 174,937 | 29% | 51.1 |
-| 11 | 143,193 | 32% | 33.8 |
-| 12 | 118,148 | 36% | 26.5 |
+| 11 | 143,194 | 32% | 33.8 |
+| 12 | 118,150 | 36% | 26.5 |
 | 13 | 100,359 | 38% | 23.3 |
-| 14 | 97,216 | 39% | 22.7 |
+| 14 | 97,212 | 39% | 22.7 |
 | 15 | 103,892 | 37% | 24.7 |
-| 16 | 121,199 | 35% | 28.7 |
-| 17 | 147,807 | 33% | 37.7 |
-| 18 | 164,963 | 31% | 49.0 |
-| 19 | 159,181 | 31% | 51.5 |
-| 20 | 140,120 | 32% | 44.0 |
-| 21 | 107,798 | 34% | 34.2 |
-| 22 | 63,964 | 39% | 25.6 |
+| 16 | 121,198 | 35% | 28.7 |
+| 17 | 147,804 | 33% | 37.7 |
+| 18 | 164,966 | 31% | 49.0 |
+| 19 | 159,177 | 31% | 51.5 |
+| 20 | 140,121 | 32% | 44.0 |
+| 21 | 107,800 | 34% | 34.2 |
+| 22 | 63,962 | 39% | 25.6 |
 | 23 | 22,024 | 49% | 17.8 |
 
 ## 11. GPS ground truth

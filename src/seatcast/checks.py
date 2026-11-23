@@ -520,6 +520,15 @@ def gps():
     return r
 
 
+def ensure_gps():
+    # without the 16 GB archive, use the shipped GPS aggregates (built from the Oct 2026 feed; no vehicle data)
+    f, shipped = OUT / 'gps_checks.json', ROOT / 'config' / 'gps_checks.json'
+    if not f.exists() and shipped.exists():
+        OUT.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(shipped.read_bytes())
+        print('gps: using shipped config/gps_checks.json (run `gps` with the archive to rebuild)')
+
+
 # ---------- technical note: every number comes from the outputs ----------
 
 TOK = re.compile(r'\{\{\s*([\w.]+)\s*(?::([^}]*))?\}\}')
@@ -566,6 +575,7 @@ def derived(cov, gps):
 
 
 def note():
+    ensure_gps()
     cov = json.loads((OUT / 'coverage.json').read_text(encoding='utf-8'))
     gps = json.loads((OUT / 'gps_checks.json').read_text(encoding='utf-8'))
     v = {'cov': cov, 'gps': gps, 'cfg': cfg(), 'x': derived(cov, gps)}
@@ -872,6 +882,7 @@ Delivered service (observed bus-km against scheduled), all days of October:
 
 
 def run():
+    ensure_gps()
     t0 = time.time()
     con = duckdb.connect()
     con.execute("SET memory_limit='4GB'; SET threads=4")

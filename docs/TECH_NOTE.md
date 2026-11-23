@@ -85,7 +85,7 @@ The rules are: a exact name, b reviewed or GPS-evidenced alias, c guarded fuzzy 
   - Weekday loads exceed Sunday loads on 79.1% of shared cells.
   - Of the 10 most crowded route-hours, 9 fall in peak windows.
 - **Distribution.** Published cells have a median load factor of 0.785 and a 90th percentile of 2.743.
-  - Level shares: many seats 31.51%, few seats 28.31%, standing 17.24%, crushed 22.94%.
+  - Level shares: many seats 31.51%, few seats 28.3%, standing 17.24%, crushed 22.94%.
 
 ### A calibration we rejected, and why
 

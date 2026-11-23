@@ -12,7 +12,8 @@ from seatcast import OUT, RAW, ROOT, WORK, cfg
 
 CSV = RAW / 'tickets' / 'October-Delhi.csv'
 TIX = WORK / 'tickets.parquet'
-PAT, PS, NET = WORK / 'patterns.parquet', WORK / 'pattern_stops.parquet', WORK / 'network.npz'
+M = WORK / 'match' if (WORK / 'match' / 'pattern_stops.parquet').exists() else WORK  # the matcher's copy: od indexes refer to it
+PAT, PS, NET = M / 'patterns.parquet', M / 'pattern_stops.parquet', WORK / 'network.npz'
 FEED = RAW / 'gtfs' / 'stops.txt'
 OD, COV, PART = WORK / 'od.parquet', OUT / 'coverage.json', WORK / 'od_partial.parquet'
 CELLS, OPER = OUT / 'cells.parquet', OUT / 'operator.parquet'
