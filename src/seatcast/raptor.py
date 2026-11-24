@@ -133,7 +133,7 @@ def load(d=None, rebuild=False, w=WORK):
     mt = max(x.stat().st_mtime for x in d.glob('*.txt'))
     if not rebuild and f.exists():
         z = np.load(f)
-        if str(z['src']) == f'{d}|{mt}':
+        if str(z['src']) == f'{d}|{mt}' or not (d / 'stop_times.txt').exists():  # deployed copy ships the built network only
             return Net(z)
     build(d, w)
     return Net(np.load(f))
