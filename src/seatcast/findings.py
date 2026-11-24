@@ -14,7 +14,9 @@ INK, GRID = '#222222', '#dddddd'
 BLUE = '#2a78d6'
 LEVELS = ['STANDING_ROOM_ONLY', 'CRUSHED_STANDING_ROOM_ONLY']
 OP_COLS = ['route', 'hour', 'plus1_benefit', 'max_from', 'max_to', 'F_obs', 'F_req', 'gap_obs']
-CELL_COLS = ['base', 'dir', 'from_name', 'to_name', 'slot', 'daytype', 'f', 'flag', 'level']
+CELL_COLS = ['base', 'dir', 'k', 'from_name', 'to_name', 'slot', 'daytype', 'f', 'flag', 'level']
+TMS = ('TMS(+)', 'UP')
+TMS_MARKS = ['Maharani Bagh', 'Lajpat Nagar', 'AIIMS', 'Satya Niketan', 'Dhaula Kuan', 'COD Ring']  # stops named or implied by the Down To Earth article
 
 
 def axes(title, xl, yl):
@@ -85,6 +87,28 @@ def tables(op, cells, e, k):
     return f1, f2, f3, f4, f5
 
 
+def tms_profile(cells, e, k):
+    # weekday riders/day on each stretch of the TMS ring route, in route order (f pools 2w+1 slots; undo it)
+    x = cells[(cells['base'] == TMS[0]) & (cells['dir'] == TMS[1]) & (cells['daytype'] == 'weekday')]
+    return (x.groupby(['k', 'from_name', 'to_name'], as_index=False)['f'].sum()
+            .assign(riders=lambda d: d['f'] * e / (2 * k['slot_window'] + 1)).sort_values('k').reset_index(drop=True))
+
+
+def tms_story(p):
+    # k of the first stretch whose name contains each marker; shape facts computed from the profile
+    at = {m: int(p.loc[p['from_name'].str.contains(m, regex=False), 'k'].min()) for m in TMS_MARKS
+          if p['from_name'].str.contains(m, regex=False).any()}
+    if len(at) < len(TMS_MARKS):
+        return None
+    r = p.set_index('k')['riders']
+    ks = p.set_index('k')['from_name']
+    pk = r.loc[at['Maharani Bagh']:at['Dhaula Kuan']].idxmax()
+    lo = r.loc[pk:at['Dhaula Kuan']].idxmin()
+    hi = r.loc[at['Dhaula Kuan']:at['Dhaula Kuan'] + 6].max()
+    return {'at': at, 'before': r.loc[at['Maharani Bagh'] - 1], 'mb': r.loc[at['Maharani Bagh']],
+            'pk': pk, 'pk_name': ks.loc[pk], 'pk_r': r.loc[pk], 'lo_name': ks.loc[lo], 'lo_r': r.loc[lo], 'hi': hi}
+
+
 def chart_hourly(f4):
     h = f4.index.to_numpy()
     share = f4['share'].to_numpy() * 100
@@ -113,7 +137,7 @@ def fmt(value, digits=0):
     return f'{value:,.{digits}f}'
 
 
-def report(f1, f2, f3, f4, f5, e, k):
+def report(f1, f2, f3, f4, f5, prof, e, k):
     am, pm = f2
     best = f1.iloc[0]
     busiest = f3.iloc[0]
@@ -170,6 +194,32 @@ def report(f1, f2, f3, f4, f5, e, k):
     for r in f5.itertuples():
         s.append(f'| {r.base} | {r.dir} | {fmt(r.cells)} | {fmt(r.crushed)} | {r.share:.1%} |')
     s += ['', 'Caveat: sizes at the peak carry the uncertainty described in TECH_NOTE §8; the ranking is the robust part.', '']
+    st = tms_story(prof)
+    s += ['## Outside check', '',
+          ('The one public source we found with a route-level passenger pattern is a Down To Earth report on a DTC '
+           'experiment on the TMS ring route, which it calls "one of the most popular bus routes in Delhi". '
+           'An on-bus passenger count showed that on the up direction Maharani Bagh and Lajpat Nagar are high boarding stops, '
+           'that "the passenger count dropped by half at the AIIMS stop", and that it "started to increase again after Dhaula Kuan".'), '']
+    if st:
+        s += [(f"SeatCast's weekday flow on TMS(+) UP has the same shape. It rises from {fmt(st['before'])} to {fmt(st['mb'])} riders/day "
+               f"at Maharani Bagh, peaks at {st['pk_name']} ({fmt(st['pk_r'])}), falls to a low of {fmt(st['lo_r'])} at {st['lo_name']} "
+               f"({(st['lo_r'] / st['pk_r'] - 1):.0%}), then rises again to {fmt(st['hi'])} within six stretches of Dhaula Kuan "
+               f"({(st['hi'] / st['lo_r'] - 1):+.0%} from the low). The direction and stops broadly agree; the published drop is larger, "
+               f"and the two measure different things: the survey counted riders on board, we count app tickets scaled to all riders (E = {fmt(e, 2)})."), '',
+              '| Stretch starts at | Order on route | Estimated weekday riders/day |', '|---|---:|---:|']
+        for m, kk in st['at'].items():
+            row = prof[prof['k'] == kk].iloc[0]
+            s.append(f"| {row['from_name']} | {kk} | {fmt(row['riders'])} |")
+        s.append('')
+    else:
+        s += ['The TMS stretches could not be matched by name in this build, so no profile comparison is shown.', '']
+    s += [('**Top-ten overlap:** not computable. Neither that report nor the GNCTD route-rationalization notice publishes a '
+           'ranking of routes by ridership, and we do not substitute our own.'), '',
+          'Sources: [Down To Earth, DTC route-curtailment pilot](https://www.downtoearth.org.in/energy/'
+          'dtc-pilots-one-bus-route-design-to-demonstrate-improved-services-and-passengers); '
+          '[GNCTD Transport Department, route-rationalization public notice]'
+          '(https://transport.delhi.gov.in/sites/default/files/Transport/circulars-orders/'
+          'public_notice_route_rationalization.pdf).', '']
     return '\n'.join(s)
 
 
@@ -181,9 +231,10 @@ def run():
     cov = json.loads((OUT / 'coverage.json').read_text(encoding='utf-8'))
     e = cov['load']['E']['central']
     f1, f2, f3, f4, f5 = tables(op, cells, e, k)
+    prof = tms_profile(cells, e, k)
     chart_hourly(f4)
     chart_plus1(f1)
-    md = report(f1, f2, f3, f4, f5, e, k)
+    md = report(f1, f2, f3, f4, f5, prof, e, k)
     p = ROOT / 'docs' / 'FINDINGS.md'
     p.write_text(md, encoding='utf-8')
     print(f'findings: {p.relative_to(ROOT)} written ({time.time() - t0:.1f}s)')

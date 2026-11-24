@@ -96,3 +96,22 @@ Among routes with at least 20 published peak cells, 610SPL DOWN had the highest 
 | 717E | DOWN | 204 | 197 | 96.6% |
 
 Caveat: sizes at the peak carry the uncertainty described in TECH_NOTE §8; the ranking is the robust part.
+
+## Outside check
+
+The one public source we found with a route-level passenger pattern is a Down To Earth report on a DTC experiment on the TMS ring route, which it calls "one of the most popular bus routes in Delhi". An on-bus passenger count showed that on the up direction Maharani Bagh and Lajpat Nagar are high boarding stops, that "the passenger count dropped by half at the AIIMS stop", and that it "started to increase again after Dhaula Kuan".
+
+SeatCast's weekday flow on TMS(+) UP has the same shape. It rises from 321 to 1,521 riders/day at Maharani Bagh, peaks at AIIMS (2,261), falls to a low of 1,478 at Satya Niketan (-35%), then rises again to 1,745 within six stretches of Dhaula Kuan (+18% from the low). The direction and stops broadly agree; the published drop is larger, and the two measure different things: the survey counted riders on board, we count app tickets scaled to all riders (E = 44.58).
+
+| Stretch starts at | Order on route | Estimated weekday riders/day |
+|---|---:|---:|
+| Maharani Bagh | 2 | 1,521 |
+| Lajpat Nagar Ring Road / VINOBA PURI METRO STATAION | 5 | 1,987 |
+| AIIMS | 10 | 2,261 |
+| Satya Niketan | 17 | 1,478 |
+| ARSD College ( Dhaula Kuan) | 18 | 1,597 |
+| COD Ring Road | 23 | 1,745 |
+
+**Top-ten overlap:** not computable. Neither that report nor the GNCTD route-rationalization notice publishes a ranking of routes by ridership, and we do not substitute our own.
+
+Sources: [Down To Earth, DTC route-curtailment pilot](https://www.downtoearth.org.in/energy/dtc-pilots-one-bus-route-design-to-demonstrate-improved-services-and-passengers); [GNCTD Transport Department, route-rationalization public notice](https://transport.delhi.gov.in/sites/default/files/Transport/circulars-orders/public_notice_route_rationalization.pdf).

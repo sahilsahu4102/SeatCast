@@ -198,6 +198,9 @@ def test_checks_report():
 def test_findings_report():
     s = FINDINGS.read_text(encoding='utf-8')
     assert len(re.findall(r'^## Finding F[1-5] — ', s, re.M)) == 5
+    assert '## Outside check' in s
+    assert '**Top-ten overlap:** not computable.' in s
+    assert "SeatCast's weekday flow on TMS(+) UP" in s
 
 
 @need(CELLS)
