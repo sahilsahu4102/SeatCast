@@ -7,9 +7,11 @@
 
 Built for the **Delhi Transport Stack Hackathon 2026, Problem 2** (crowdedness-aware journey planner).
 
+### ▶ [Watch the 3-minute demo video](https://youtu.be/QW0uWUYJfwQ)
+
 ![Planner: Anand Vihar ISBT to Connaught Place at 18:00 on a weekday. Seat likely at boarding, then crowded from Hasanpur Depot into CP; the strip shows crowding stop by stop](docs/img/screen-planner.png)
 
-> **Submission documents:** [Proposal (PDF)](docs/SeatCast_Proposal.pdf) · [Technical note (PDF)](docs/SeatCast_Technical_Note.pdf) · [Validation report](docs/CHECKS.md) · [Demo script](docs/DEMO_SCRIPT.md)
+> **Submission documents:** [Demo video](https://youtu.be/QW0uWUYJfwQ) · [Proposal (PDF)](docs/SeatCast_Proposal.pdf) · [Technical note (PDF)](docs/SeatCast_Technical_Note.pdf) · [Validation report](docs/CHECKS.md) · [Demo script](docs/DEMO_SCRIPT.md)
 
 ---
 
