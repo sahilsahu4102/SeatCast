@@ -80,6 +80,7 @@ The rules are: a exact name, b reviewed or GPS-evidenced alias, c guarded fuzzy 
 | True | 18.0 | 268,902 | 7.7 | 10.0 | 12.7 |
 | True | 22.5 | 231,879 | 12.5 | 17.8 | 29.3 |
 
+- **Hold-out forecast.** Levels built from weeks 1–3 alone predict week 4 within one level on **95.0%** of 858,888 cells (same level 64.9%), against 97.0% / 67.0% for two halves of the same weeks; high-confidence cells reach 97.9%, at the noise ceiling (`docs/CHECKS.md` §15). A GPS dwell-time check (stop dwell against predicted activity per bus) was too weak to use: pings every ~11 s are too coarse.
 - **Known patterns** (details in `docs/CHECKS.md`).
   - On-board load (segment flows) peaks on weekdays at 9:00 and 19:00, with the low at 14:00. Boardings by hour are in `docs/CHECKS.md` §3.
   - Weekday loads exceed Sunday loads on 75.6% of shared cells.

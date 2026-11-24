@@ -66,6 +66,7 @@ The rules are: a exact name, b reviewed or GPS-evidenced alias, c guarded fuzzy 
 
 {{x.slab_table}}
 
+- **Hold-out forecast.** Levels built from weeks 1–3 alone predict week 4 within one level on **{{cov.validation.holdout.within_one:.1%}}** of {{cov.validation.holdout.n_cells:,}} cells (same level {{cov.validation.holdout.same_level:.1%}}), against {{cov.validation.holdout.ceiling_within:.1%}} / {{cov.validation.holdout.ceiling_same:.1%}} for two halves of the same weeks; high-confidence cells reach {{cov.validation.holdout.high.within_one:.1%}}, at the noise ceiling (`docs/CHECKS.md` §15). A GPS dwell-time check (stop dwell against predicted activity per bus) was too weak to use: pings every ~11 s are too coarse.
 - **Known patterns** (details in `docs/CHECKS.md`).
   - On-board load (segment flows) peaks on weekdays at {{cov.load.weekday_flow_by_hour_peak.am}}:00 and {{cov.load.weekday_flow_by_hour_peak.pm}}:00, with the low at {{cov.load.weekday_flow_by_hour_peak.midday_min}}:00. Boardings by hour are in `docs/CHECKS.md` §3.
   - Weekday loads exceed Sunday loads on {{cov.load.weekday_gt_sunday_pct_of_shared_cells}}% of shared cells.
