@@ -131,7 +131,7 @@ Days flagged (beyond the configured deviation from the same-weekday median): non
 
 ![Load factor distribution](img/lf_hist.png)
 
-Publishable cells: 2,312,452 of 4,411,005. Load factor p10 / p50 / p90 / p99 = 0.241 / 0.785 / 2.427 / 2.432.
+Publishable cells: 2,312,449 of 4,411,005. Load factor p10 / p50 / p90 / p99 = 0.241 / 0.785 / 2.427 / 2.432.
 Over seats: 40.19% of cells. Over total capacity: 22.94%. Censored at 1.5 x total capacity: 12.338% of cells (these show as the top load factor, which is the censor cap and explains the repeated top values below).
 
 Routes with most censored cells:
@@ -166,7 +166,7 @@ Ten most crowded route-hours by standee-minutes:
 
 ## 10. Where estimates are weakest
 
-- Low-n cells: 1,567,113 of 4,411,005 cells have fewer than 5 sampled passengers and are shown as limited data. Of the publishable cells, confidence is high 18.83%, medium 39.23%, low 41.94%.
+- Low-n cells: 1,567,116 of 4,411,005 cells have fewer than 5 sampled passengers and are shown as limited data. Of the publishable cells, confidence is high 18.83%, medium 39.23%, low 41.94%.
 - Schedule gaps: 531,440 cells carry passengers but no scheduled bus (2.62% of passengers).
 - Hours with the highest low-confidence share: 4:00 (59%), 0:00 (56%), 23:00 (53%).
 
@@ -196,21 +196,21 @@ Per hour of day, publishable cells:
 | 4 | 5,451 | 59% | 16.0 |
 | 5 | 33,300 | 49% | 22.8 |
 | 6 | 83,900 | 41% | 28.7 |
-| 7 | 136,632 | 40% | 40.5 |
+| 7 | 136,631 | 40% | 40.5 |
 | 8 | 184,646 | 42% | 62.2 |
 | 9 | 197,540 | 44% | 69.9 |
 | 10 | 174,937 | 42% | 51.1 |
 | 11 | 143,194 | 38% | 33.8 |
 | 12 | 118,150 | 40% | 26.5 |
-| 13 | 100,358 | 42% | 23.3 |
+| 13 | 100,357 | 42% | 23.3 |
 | 14 | 97,212 | 42% | 22.7 |
 | 15 | 103,892 | 41% | 24.7 |
 | 16 | 121,198 | 39% | 28.7 |
 | 17 | 147,804 | 40% | 37.7 |
 | 18 | 164,966 | 44% | 49.0 |
-| 19 | 159,178 | 45% | 51.5 |
-| 20 | 140,122 | 41% | 44.0 |
-| 21 | 107,800 | 41% | 34.2 |
+| 19 | 159,179 | 45% | 51.5 |
+| 20 | 140,121 | 41% | 44.0 |
+| 21 | 107,799 | 41% | 34.2 |
 | 22 | 63,963 | 45% | 25.6 |
 | 23 | 22,024 | 53% | 17.8 |
 
@@ -267,7 +267,7 @@ Published cells (flag none), weekday unless stated. Mean load per observed bus i
 | 4 | 3,151 | 29.7 | 32.5 | 12.2% |
 | 5 | 17,842 | 29.1 | 32.3 | 13.4% |
 | 6 | 42,508 | 29.6 | 32.9 | 14.5% |
-| 7 | 67,747 | 37.9 | 46.9 | 23.9% |
+| 7 | 67,748 | 37.9 | 46.9 | 23.9% |
 | 8 | 86,446 | 49.8 | 72.4 | 38.6% |
 | 9 | 88,824 | 54.3 | 81.8 | 44.7% |
 | 10 | 80,234 | 46.9 | 62.3 | 34.1% |
@@ -289,12 +289,12 @@ Crushed share by weekday cell flow quartile (f = digital passengers per day on t
 
 | quartile | f from | f to | cells | crushed share | low confidence |
 |---|---|---|---|---|---|
-| 1 | 0.25 | 0.60 | 282,551 | 0.7% | 75.0% |
+| 1 | 0.25 | 0.60 | 282,552 | 0.7% | 75.0% |
 | 2 | 0.60 | 1.40 | 282,551 | 8.8% | 2.5% |
 | 3 | 1.40 | 3.45 | 282,551 | 25.7% | 12.8% |
 | 4 | 3.45 | 122.25 | 282,551 | 63.0% | 42.2% |
 
-Of 2,312,452 published cells, 12.3% have raw load above 1.5 x total capacity and 7.3% above 2 x. 11.6% have fewer than one observed bus in the slot window (N_obs < 1). Censored cells: 12.3%; low confidence overall: 41.9%.
+Of 2,312,449 published cells, 12.3% have raw load above 1.5 x total capacity and 7.3% above 2 x. 11.6% have fewer than one observed bus in the slot window (N_obs < 1). Censored cells: 12.3%; low confidence overall: 41.9%.
 
 ## 14. Published-level stability
 
@@ -302,13 +302,13 @@ Level recomputed from week 1 and week 2 weekday flow (same N_obs, capacity and E
 
 | comparison | confidence | cells | same level | within one level |
 |---|---|---|---|---|
-| week 1 vs week 2 | all | 1,123,193 | 58.8% | 89.1% |
-| week 1 vs week 2 | low | 368,182 | 74.9% | 91.1% |
-| week 1 vs week 2 | medium | 444,839 | 49.1% | 84.3% |
-| week 1 vs week 2 | high | 310,172 | 53.5% | 93.7% |
-| odd vs even days (ceiling) | all | 1,123,193 | 62.5% | 92.4% |
-| odd vs even days (ceiling) | high | 310,172 | 57.3% | 95.6% |
-| odd vs even days (ceiling) | medium | 444,839 | 53.1% | 88.8% |
-| odd vs even days (ceiling) | low | 368,182 | 78.3% | 94.0% |
+| week 1 vs week 2 | all | 1,123,194 | 58.8% | 89.1% |
+| week 1 vs week 2 | low | 368,188 | 74.9% | 91.1% |
+| week 1 vs week 2 | high | 310,174 | 53.5% | 93.7% |
+| week 1 vs week 2 | medium | 444,832 | 49.1% | 84.3% |
+| odd vs even days (ceiling) | all | 1,123,194 | 62.5% | 92.4% |
+| odd vs even days (ceiling) | high | 310,174 | 57.3% | 95.6% |
+| odd vs even days (ceiling) | medium | 444,832 | 53.1% | 88.8% |
+| odd vs even days (ceiling) | low | 368,188 | 78.3% | 94.0% |
 
 Unstable routes: 794DOWN has rho 0.28 against the 0.7 threshold, so it is unstable (rank 3 by sampled passengers among the unstable routes).

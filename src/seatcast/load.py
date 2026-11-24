@@ -228,7 +228,7 @@ def operator(x, cap, names):
     g = ['route_id', 'daytype', 'h']
     m = x.loc[x.groupby(g)['f'].idxmax()].set_index(g)
     o = x.groupby(g)[['st', 'st1']].sum()
-    o['P_max'] = m['E'] * m['f']
+    o['P_max'] = m['L'] * m['N_obs']  # riders/h at the busiest stretch from the capped load: demand beyond the cap is not trusted
     o['F_sched'], o['F_obs'] = m['N'], m['N_obs']
     o['F_req'] = np.ceil(o['P_max'] / (k['desired_load_factor'] * m['total'])).astype(int)
     o['gap'] = (o['F_req'] - o['F_sched']).clip(lower=0)
