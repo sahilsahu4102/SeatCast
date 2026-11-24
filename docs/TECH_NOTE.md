@@ -1,4 +1,3 @@
-<!-- Template. Run `python -m seatcast.run note` to render docs/TECH_NOTE.md. Every number is a placeholder filled from data/out. -->
 # SeatCast Delhi: technical note
 
 *Delhi Transport Stack Hackathon 2026, Problem 2. Every number in this note is generated from the pipeline outputs (`data/out/coverage.json`, `data/out/gps_checks.json`, `config.yaml`) by `python -m seatcast.run note`.*
@@ -27,26 +26,27 @@ Commuters choose buses by time, but in Delhi whether you get a seat matters as m
    - Tickets with only one stop matched get the other end imputed from riders who boarded or alighted at the same stop and hour: 151,951 passengers.
    - A per-route scale covers the remainder. In all, **97.61%** of digital passengers are represented; 1.66% are on route codes absent from GTFS.
    - For each cell (route, direction, stretch, 30-minute slot, day type), the mean daily flow f is taken over all days of that type.
+   - **This is the brief's running count (§5), kept at the only level the data supports.** Expanding each ticket over the segments it rides and summing *is* the running count (boardings minus alightings, accumulated along the route). We accumulate it over every bus in a 30-minute slot across the month, then divide by the buses that GPS shows actually ran. Per individual bus the app sample is a median of 6 ticketed riders a day, so a per-trip count would be noise. GPS puts the bus a median 218 m from our matched boarding stop at ticket time, so the tickets are where we place them. The unit test `tests/test_flows.py::test_two_tickets_segment_flows` checks the count on a toy route.
 3. **Buses that actually ran (N).** The timetable overstates service.
    - GPS bus-km against timetable bus-km gives a delivery ratio of **62%** on weekdays, 63% on Saturdays and 66% on Sundays. The daily coefficient of variation is 0.05.
    - A count of buses passing a stop agrees closely on the busiest routes.
    - Counting GPS trip ids would have doubled service, because the feed splits journeys into fragments. We test for this and avoid it.
    - Scheduled buses per slot are scaled by the ratio for each route, day type and hour band, clamped to [0.25, 1.5].
 4. **Load per bus.** **L = E · f / N**, with E = R / D = 44.58 (range 31.21–45.93).
-   - This gives 31.6 passenger-km per observed bus-km. That is 639 riders per bus per day on 6,197 buses seen in GPS per weekday, close to DTC's reported ~756 [R3].
+   - This gives 31.6 passenger-km per observed bus-km, on 6,197 buses seen in GPS per weekday.
    - Seats and total capacity come from the bus types seen on each route [R14]. Every capacity value is marked VERIFY.
 
 ## 4. Uncertainty
 
-- **Variation.** cv² = 1/n (sampling) + cv_day² (day-to-day) + 0.35² (bus-to-bus bunching, an assumption).
-- **Seat probability.** The load is treated as lognormal with mean L, and **P(seat) = P(load < seats)**. Once a rider gets a seat, they keep it for the rest of the leg.
+- **Variation.** cv² = 1/n (sampling) + cv_day² (day-to-day) + 0.35² (bus-to-bus bunching, an assumption). This full cv sets the range and the confidence badge.
+- **Seat probability.** The load on a given bus is treated as lognormal with mean L and the **trip-to-trip** variation only: cv_trip² = max(cv_day² − sampling part, 0) + 0.35². Sampling noise says how sure we are of the average, not how much one bus differs from the next, so it is left out (median cv 0.87 → cv_trip 0.42). **P(seat) = P(load < seats)**; once a rider gets a seat, they keep it for the rest of the leg.
 - **Levels.** Load factor maps to GTFS-Realtime occupancy levels [R13]: many seats < 0.5 of seats, few seats < 1.0, standing < total capacity, crushed above that.
 - **Confidence.**
   - High needs n ≥ 30 and week-to-week Spearman ρ ≥ 0.7; medium needs n ≥ 10.
   - Cells with fewer than 5 sampled riders are never published. The page says "limited data" instead.
-  - Shares of published cells: high 24.21%, medium 42.72%, low 33.07%.
-- **Censoring.** 3.037% of cells imply more than 3× a bus's total capacity, mostly on routes 717/717A, 539, 774 and 525.
-  - These cells are well sampled and certainly crushed, but the magnitude is implausible. We show them as crushed with low confidence, at 3× capacity.
+  - Shares of published cells: high 18.83%, medium 39.23%, low 41.94%.
+- **Censoring.** 12.3% of cells imply more than 1.5× a bus's total capacity, most of them on 717A UP, 717A DOWN, 717 UP, 717 DOWN, 717B DOWN.
+  - These cells are well sampled and certainly crushed, but the magnitude is implausible. We show them as crushed with low confidence, at 1.5× capacity.
 - **Expansion scenarios.** E low / central / high are carried through as a load range on every cell.
 
 ## 5. Validation
@@ -68,7 +68,7 @@ The rules are: a exact name, b reviewed or GPS-evidenced alias, c guarded fuzzy 
 
 - **The GPS route id is the GTFS route id.** The median distance from a ping to its own route's stops is 137 m, against 10,650 m for a shuffled route.
 - **Who is in the file.** 99.3% of ticket passengers with a vehicle ride a bus that appears in the GPS feed, which covers DTC and cluster routes.
-- **Fares agree with distances.** Distances along the route rise cleanly with the fare slab paid, an independent check of the stop matching:
+- **Fares agree with distances.** Distances along the route rise monotonically with the fare slab paid, an independent check of the stop matching (the official slab km bounds could not be verified):
 
 | AC | fare per passenger (Rs) | passengers | km p10 | km p50 | km p90 |
 |---|---|---|---|---|---|
@@ -81,10 +81,10 @@ The rules are: a exact name, b reviewed or GPS-evidenced alias, c guarded fuzzy 
 | True | 22.5 | 231,879 | 12.5 | 17.8 | 29.3 |
 
 - **Known patterns** (details in `docs/CHECKS.md`).
-  - The weekday peaks are at 9:00 and 19:00, with the low at 14:00.
-  - Weekday loads exceed Sunday loads on 79.1% of shared cells.
+  - On-board load (segment flows) peaks on weekdays at 9:00 and 19:00, with the low at 14:00. Boardings by hour are in `docs/CHECKS.md` §3.
+  - Weekday loads exceed Sunday loads on 75.6% of shared cells.
   - Of the 10 most crowded route-hours, 9 fall in peak windows.
-- **Distribution.** Published cells have a median load factor of 0.785 and a 90th percentile of 2.743.
+- **Distribution.** Published cells have a median load factor of 0.785 and a 90th percentile of 2.427.
   - Level shares: many seats 31.51%, few seats 28.3%, standing 17.24%, crushed 22.94%.
 
 ### A calibration we rejected, and why
@@ -124,10 +124,14 @@ The operator tab ranks the top 20 route-hours and maps load factor by segment an
 
 ## 8. Limitations
 
-- **Digital riders are not all riders.** App users are peak-heavy and likely concentrated on some corridors (§5). One city-wide E overstates peaks there.
+- **Peak magnitudes are inflated.** Before capping, the mean load per observed bus on weekdays is 82 at 09:00 and 70 at 18:00, against a typical total capacity of 60; 7.3% of cells exceed twice the capacity. App users are more peak-concentrated than riders overall (§5), so one city-wide E overstates peaks. Levels (crushed or not) are robust; sizes at the peak are not. The fix is hourly route totals from the conductors' machines (ETM), which would set E by time of day.
+- **Stability.** Week 1 and week 2 give the same published level on 58.8% of cells and within one level on 89.1%, against 62.5% and 92.4% for two interleaved halves of the same days. Most week-to-week difference is sampling noise, not drift (`docs/CHECKS.md` §14).
+- **Fractional buses.** 11.6% of cells see fewer than one observed bus per slot window on average; their loads are averages over days with and without a bus.
 - **Missing riders.** Free (Pink pass) and pass riders are missing; expansion assumes they travel like app riders.
 - **Service.** Delivery ratios are by route, day type and hour band, not per trip; bunching is modelled only as variance. 2.62% of passengers fall in cells where the timetable has no bus (flagged as gaps).
-- **Capacities** come from fleet announcements and stay marked VERIFY until a fleet register is available.
+- **Capacities** come from fleet announcements and stay marked VERIFY until a fleet register is available. The DL51GD series is treated as a 12 m bus; if it is the 9 m DEVi, its routes are more crowded than shown.
+- **GPS coverage.** 87% of tickets with a known bus find a ping within 60 s. If missing pings also hide some service, true delivery is higher and loads lower. This is reported as a sensitivity, not applied.
+- **Night hours** (00:00–05:00) have few tickets and mostly low-confidence cells.
 - **Alighting stops are as declared on the ticket.** The single all-days GTFS calendar means day-type differences come only from demand and GPS service.
 
 ## 9. Production path

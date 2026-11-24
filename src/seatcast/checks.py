@@ -553,11 +553,17 @@ def table(rows, cols, fmt=None):
 
 
 def derived(cov, gps):
-    t = pd.read_parquet(WORK / 'tickets.parquet', columns=['pc', 'fare_class', 'f_zero'])
+    t = pd.read_parquet(WORK / 'tickets.parquet', columns=['pc', 'fare_class', 'f_zero', 'v', 'date'])
+    per_bus = t.dropna(subset=['v']).groupby(['v', 'date'])['pc'].sum().median()  # aggregate only; no ids leave here
+    c = pd.read_parquet(OUT / 'cells.parquet', columns=['cv', 'cv_trip', 'total', 'flag'])
+    c = c[c['flag'].isna()]
     L = cov['load']
     rung = gps['boarding']['by_rung_board']
     slab = cov['match']['fare_slab']['km_by_slab']
     return {
+        'per_bus_median': per_bus, 'cv_med': c['cv'].median(), 'cv_trip_med': c['cv_trip'].median(),
+        'total_med': c['total'].median(),
+        'censored_routes': ', '.join(f"{r['base']} {r['dir']}" for r in L['censored_routes_top'][:5]),
         'tickets': len(t), 'std_pct': 100 * t.loc[t['fare_class'] == 'std', 'pc'].sum() / t['pc'].sum(),
         'zero_fare': int(t['f_zero'].sum()),
         'app_share_pct': 100 * L['D_daily'] / L['ridership_daily']['central'],
@@ -580,7 +586,7 @@ def note():
     gps = json.loads((OUT / 'gps_checks.json').read_text(encoding='utf-8'))
     v = {'cov': cov, 'gps': gps, 'cfg': cfg(), 'x': derived(cov, gps)}
     src = (ROOT / 'docs' / 'TECH_NOTE.tmpl.md').read_text(encoding='utf-8')
-    out = fill(src, v)
+    out = fill(re.sub(r'^<!--.*?-->\s*', '', src, flags=re.S), v)  # the template comment is for editors only
     (ROOT / 'docs' / 'TECH_NOTE.md').write_text(out, encoding='utf-8')
     print('note: docs/TECH_NOTE.md written')
 
