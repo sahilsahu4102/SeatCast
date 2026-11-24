@@ -4,7 +4,8 @@
   var RANK = ['MANY_SEATS_AVAILABLE', 'FEW_SEATS_AVAILABLE', 'STANDING_ROOM_ONLY', 'CRUSHED_STANDING_ROOM_ONLY'];
   var ICON = {MANY_SEATS_AVAILABLE: 'seat2', FEW_SEATS_AVAILABLE: 'seat1', STANDING_ROOM_ONLY: 'stand', CRUSHED_STANDING_ROOM_ONLY: 'crowd', NO_DATA_AVAILABLE: 'nodata'};
   var ND = 'NO_DATA_AVAILABLE';
-  var DEFAULT = {from: 'anand vihar isbt', to: 'connaught place', daytype: 'weekday', time: '18:00'};
+  // the brief's example (§2.2). The main-road Anand Vihar stop, not the ISBT terminus, where everyone gets a seat
+  var DEFAULT = {from: 'anand vihar', fromId: '5694', to: 'connaught place', toId: '365', daytype: 'weekday', time: '18:00'};
   var FORM_ERR = {same_stop: ['to', 'err.same'], outside_area: ['from', 'err.outside'], unknown_stop: ['from', 'err.unknown_stop'],
                   bad_depart: ['time', 'err.input'], invalid_input: ['time', 'err.input']};
 
@@ -54,6 +55,10 @@
     });
     var lat = s.stops.map(function (x) { return x.lat; }), lon = s.stops.map(function (x) { return x.lon; });
     s.box = s.stops.length ? [Math.min.apply(0, lon), Math.min.apply(0, lat), Math.max.apply(0, lon), Math.max.apply(0, lat)] : null;
+  }
+
+  function byId(id) {
+    return s.stops.filter(function (x) { return String(x.stop_id) === id; })[0];
   }
 
   function find(q, max) {
@@ -173,8 +178,8 @@
     render();
     Data.stops().then(function (list) {
       setStops(list);
-      setField('from', find(DEFAULT.from, 1)[0] || null);
-      setField('to', find(DEFAULT.to, 1)[0] || null);
+      setField('from', byId(DEFAULT.fromId) || find(DEFAULT.from, 1)[0] || null);
+      setField('to', byId(DEFAULT.toId) || find(DEFAULT.to, 1)[0] || null);
       if (s.from && s.to) search(); else { s.status = 'idle'; render(); showForm(true); }
     }, function () {
       s.status = 'error';
@@ -339,8 +344,7 @@
     var lbl = [o.depart + ' → ' + o.arrive, o.total_min + ' min', chg, word,
                k != null ? t(c.later ? 'seat_later' : 'seats_k_of_10', {k: k}) : '', unsure(c) ? t('censored.short') : ''].filter(Boolean).join(', ');
     var avail = c.walk ? '<span class="chip walkchip">' + icon('walk') + '<span>' + esc(t('walk.only')) + '</span></span>'
-      : chip(c.level, false, c.later) + (k != null ? '<span class="k">' + esc(t('avail.k', {k: k})) + '</span>' : '') +
-        (unsure(c) ? '<span class="unc">' + esc(t('censored.short')) + '</span>' : '');
+      : chip(c.level, false, c.later) + (k != null ? '<span class="k">' + esc(t('avail.k', {k: k})) + '</span>' : '');  // one-second read: chip + k only; uncertainty sits in the detail
     var body;
     if (c.walk) {
       body = '<p class="line">' + esc(t('walk.only.line', {m: o.total_min})) + '</p>';
@@ -348,7 +352,7 @@
       var meta = [];
       if (c.confidence) meta.push('<span class="conf">' + esc(t('confidence.' + c.confidence)) + '</span>');
       if (c.n != null) meta.push('<span>' + esc(t('confidence.n', {n: num(c.n)})) + '</span>');
-      if (c.range && c.range.length === 2) meta.push('<span>' + esc(c.range[0] === c.range[1] ? t('range.one', {a: t('level.' + c.range[0])}) : t('range', {a: t('level.' + c.range[0]), b: t('level.' + c.range[1])})) + '</span>');
+      if (c.range && c.range.length === 2 && !(c.range[0] === c.range[1] && c.range[0] === c.level)) meta.push('<span>' + esc(c.range[0] === c.range[1] ? t('range.one', {a: t('level.' + c.range[0])}) : t('range', {a: t('level.' + c.range[0]), b: t('level.' + c.range[1])})) + '</span>');
       meta.push('<span class="onmap">' + esc(t('on_map')) + '</span>');
       body = '<p class="line">' + crowdLine(o, c) + '</p><p class="meta">' + meta.join('') + '</p>' + (c.level === ND ? why(c) : '') +
         (unsure(c) ? '<p class="why">' + icon('crowd') + '<span>' + esc(t('censored.long')) + '</span></p>' : '');
