@@ -118,3 +118,7 @@ pytest -q
 - **Data:** Delhi Transport Department and the Transport Stack hackathon organisers (e-tickets, GTFS, GPS).
 - **Open-source software:** DuckDB, pandas, NumPy, PyArrow, RapidFuzz, FastAPI, Uvicorn, MapLibre GL JS, with OpenFreeMap tiles (© OpenMapTiles, data © OpenStreetMap contributors).
 - **AI assistance:** developed with help from Claude Code (Anthropic), as the hackathon rules require AI tools to be credited.
+
+## Licence
+
+Code: MIT, see [LICENSE](LICENSE). Data belongs to its providers (Transport Department, GNCTD / Delhi Transport Stack) and is not in this repository; the aggregates in `config/` and the published outputs are shared with the source acknowledged.
