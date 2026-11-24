@@ -38,3 +38,13 @@ def test_observed_n_joins_route_daytype_band():
     o = load.observe(c, r, 'h')
     assert o['N_obs'].tolist() == [2.0, 3.0, 4.0]  # B has no row: ratio 1
     assert load.observe(c, None, 'h')['N_obs'].tolist() == [4.0, 4.0, 4.0]
+
+
+def test_cv_trip_not_above_cv_and_censor():
+    c = pd.DataFrame({'N': [4.0, 4.0], 'N_obs': [4.0, 1.0], 'n': [50.0, 50.0], 'calib': 1.0, 'f': [8.0, 8.0],
+                      'total': 60.0, 'seats': 39.0, 'cv_day': [0.9, 0.3], 'scale': [2.0, 2.0], 'rho': 0.9})
+    r = load.model(c, {'low': 1.0, 'central': 1.0, 'high': 1.0})
+    assert (r['cv_trip'] <= r['cv']).all() and (r['cv_trip'] > 0).all()
+    assert r['censored'].tolist() == [False, False] and r['L'].tolist() == [2.0, 8.0]
+    h = load.model(c.assign(f=[800.0, 800.0], scale=1.0), {'low': 1.0, 'central': 1.0, 'high': 1.0})
+    assert h['censored'].all() and (h['L'] == 90).all() and (h['confidence'] == 'low').all()

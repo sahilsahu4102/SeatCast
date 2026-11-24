@@ -737,6 +737,125 @@ def verdict(L):
             f"{hi['routes_over_cap']} routes carrying {hi['routes_over_cap_pax_pct']}%, which is too much of the network to treat as noise.")
 
 
+PLAUS = '''
+CREATE OR REPLACE TEMP TABLE pc AS SELECT daytype, slot // 2 h, L, total, f, N_obs, censored, level, confidence, n,
+  {e} * calib * f / N_obs raw FROM {cells} WHERE flag IS NULL;
+'''
+
+
+def plaus(con, e):
+    # published cells only; raw = uncensored load. f bands are quartiles of weekday cell flow
+    con.execute(PLAUS.format(e=e, cells=CELLS))
+    wk = "daytype = 'weekday'"
+    hr = sql(con, f'''SELECT h, count(*) cells, avg(L) mean_L, avg(raw) mean_raw, avg((level LIKE 'CRUSHED%')::INT) crushed
+        FROM pc WHERE {wk} GROUP BY 1 ORDER BY 1''')
+    band = sql(con, f'''WITH b AS (SELECT *, ntile(4) OVER (ORDER BY f) q FROM pc WHERE {wk})
+        SELECT q, min(f) f_lo, max(f) f_hi, count(*) cells, avg((level LIKE 'CRUSHED%')::INT) crushed,
+        avg((confidence = 'low')::INT) low FROM b GROUP BY 1 ORDER BY 1''')
+    tot = sql(con, """SELECT count(*) cells, avg((raw > 1.5 * total)::INT) a15, avg((raw > 2 * total)::INT) a2,
+        avg((N_obs < 1)::INT) nobs1, avg(censored::INT) cens, avg((confidence = 'low')::INT) low FROM pc""").iloc[0]
+    return hr, band, tot
+
+
+STAB = '''
+CREATE OR REPLACE TEMP TABLE w AS SELECT route_id, s0, s1, slot + j slot, date, week, SUM(pax) pax
+  FROM {flows}, (SELECT unnest(range(-{w}, {w} + 1)) j)
+  WHERE daytype = 'weekday' AND week IN (1, 2) AND slot + j BETWEEN 0 AND {last}
+  AND date NOT IN (SELECT CAST(date AS DATE) FROM read_csv({daily}) WHERE flag) GROUP BY ALL;
+CREATE OR REPLACE TEMP TABLE d AS SELECT date, week, row_number() OVER (ORDER BY date) r FROM (SELECT DISTINCT date, week FROM w);
+CREATE OR REPLACE TEMP TABLE nd AS SELECT
+  count(*) FILTER (WHERE week = 1) a, count(*) FILTER (WHERE week = 2) b,
+  count(*) FILTER (WHERE r % 2 = 1) ha, count(*) FILTER (WHERE r % 2 = 0) hb FROM d;
+CREATE OR REPLACE TEMP TABLE g AS SELECT route_id, s0, s1, slot,
+  SUM(pax) FILTER (WHERE d.week = 1) / (SELECT a FROM nd) fa, SUM(pax) FILTER (WHERE d.week = 2) / (SELECT b FROM nd) fb,
+  SUM(pax) FILTER (WHERE d.r % 2 = 1) / (SELECT ha FROM nd) ha, SUM(pax) FILTER (WHERE d.r % 2 = 0) / (SELECT hb FROM nd) hb
+  FROM w JOIN d USING (date, week) GROUP BY ALL;
+CREATE OR REPLACE TEMP TABLE x AS SELECT g.*, k.* EXCLUDE (route_id, s0, s1, slot) FROM g JOIN
+  (SELECT route_id, from_stop s0, to_stop s1, slot, N_obs, seats, total, calib, confidence
+   FROM {cells} WHERE flag IS NULL AND daytype = 'weekday') k USING (route_id, s0, s1, slot);
+CREATE OR REPLACE MACRO lv(f, N, s, t, e) AS CASE WHEN coalesce(f, 0) * e / N / s < {many} THEN 0
+  WHEN coalesce(f, 0) * e / N / s < {few} THEN 1 WHEN coalesce(f, 0) * e / N < t THEN 2 ELSE 3 END;
+'''
+
+
+def stability(con, e):
+    # published level from week 1 flow against week 2, and the split-half (odd vs even days) ceiling
+    k = cfg()
+    con.execute(STAB.format(flows=q1(WORK / 'flows.parquet'), daily=DAILY, cells=CELLS, w=k['slot_window'],
+                            last=24 * 60 // k['slot_min'] - 1, **k['levels']))
+    out = []
+    for name, (a, b) in {'week 1 vs week 2': ('fa', 'fb'), 'odd vs even days (ceiling)': ('ha', 'hb')}.items():
+        x, y = (f'lv({c}, N_obs, seats, total, {e} * calib)' for c in (a, b))
+        r = sql(con, f'''SELECT CASE WHEN grouping(confidence) = 1 THEN 'all' ELSE confidence END conf, count(*) cells,
+            avg(({x} = {y})::INT) same, avg((abs({x} - {y}) <= 1)::INT) within1 FROM x GROUP BY ROLLUP (confidence)''')
+        out += [{'pair': name, **r_} for r_ in r.to_dict('records')]
+    return pd.DataFrame(out)
+
+
+def checks_key(hr, tot, st):
+    w, s = 'week 1 vs week 2', 'odd vs even days (ceiling)'
+
+    def g(p, c):
+        return st[(st['pair'] == p) & (st['conf'] == c)].iloc[0]
+
+    def f(x):
+        return round(float(x), 4)
+    h = hr.set_index('h')
+    return {'weekday_mean_load_0900': f(h.loc[9, 'mean_L']), 'weekday_mean_load_1800': f(h.loc[18, 'mean_L']),
+            'weekday_mean_raw_load_0900': f(h.loc[9, 'mean_raw']), 'weekday_mean_raw_load_1800': f(h.loc[18, 'mean_raw']),
+            'share_above_1_5x_total': f(tot['a15']), 'share_above_2x_total': f(tot['a2']),
+            'share_nobs_below_1': f(tot['nobs1']), 'share_censored': f(tot['cens']), 'share_low_confidence': f(tot['low']),
+            'same_level_week': f(g(w, 'all')['same']), 'within_one_week': f(g(w, 'all')['within1']),
+            'same_level_ceiling': f(g(s, 'all')['same']), 'within_one_ceiling': f(g(s, 'all')['within1']),
+            'same_level_week_high': f(g(w, 'high')['same']), 'within_one_week_high': f(g(w, 'high')['within1']),
+            'same_level_ceiling_high': f(g(s, 'high')['same']), 'within_one_ceiling_high': f(g(s, 'high')['within1'])}
+
+
+def merge_checks(d):
+    f = OUT / 'coverage.json'
+    cov = json.loads(f.read_text(encoding='utf-8'))
+    cov['checks'] = d
+    f.write_text(json.dumps(cov, indent=2, default=str), encoding='utf-8')
+
+
+def unstable(rr, hi, name):
+    r = rr[rr['route'] == name]
+    if r.empty:
+        return f'{name} has no week-to-week rho.'
+    r = r.iloc[0]
+    s = f"{name} has rho {r['rho']:.2f} against the {hi} threshold"
+    if r['rho'] >= hi:
+        return s + ', so it is not unstable.'
+    rank = int((rr[rr['rho'] < hi]['n'] > r['n']).sum()) + 1
+    return s + f', so it is unstable (rank {rank} by sampled passengers among the unstable routes).'
+
+
+def sec13(hr, band, tot, ctop):
+    return f'''## 13. Output plausibility
+
+Published cells (flag none), weekday unless stated. Mean load per observed bus is the published load (censored at {ctop} x total); the raw column is uncensored.
+
+{table(hr.to_dict('records'), [('hour', 'h'), ('cells', 'cells'), ('mean load per observed bus', 'mean_L'), ('mean raw load', 'mean_raw'), ('crushed share', 'crushed')], {'cells': ',', 'mean_L': '.1f', 'mean_raw': '.1f', 'crushed': '.1%'})}
+
+Crushed share by weekday cell flow quartile (f = digital passengers per day on the segment and slot):
+
+{table(band.to_dict('records'), [('quartile', 'q'), ('f from', 'f_lo'), ('f to', 'f_hi'), ('cells', 'cells'), ('crushed share', 'crushed'), ('low confidence', 'low')], {'q': 'd', 'f_lo': '.2f', 'f_hi': '.2f', 'cells': ',', 'crushed': '.1%', 'low': '.1%'})}
+
+Of {int(tot['cells']):,} published cells, {100 * tot['a15']:.1f}% have raw load above 1.5 x total capacity and {100 * tot['a2']:.1f}% above 2 x. {100 * tot['nobs1']:.1f}% have fewer than one observed bus in the slot window (N_obs < 1). Censored cells: {100 * tot['cens']:.1f}%; low confidence overall: {100 * tot['low']:.1f}%.
+'''
+
+
+def sec14(st, un_line):
+    return f'''## 14. Published-level stability
+
+Level recomputed from week 1 and week 2 weekday flow (same N_obs, capacity and E) and compared per cell. The odd-versus-even-days split of the same two weeks is the ceiling: it has no week effect, only sampling noise.
+
+{table(st.to_dict('records'), [('comparison', 'pair'), ('confidence', 'conf'), ('cells', 'cells'), ('same level', 'same'), ('within one level', 'within1')], {'cells': ',', 'same': '.1%', 'within1': '.1%'})}
+
+Unstable routes: {un_line}
+'''
+
+
 def build(con, cov, gp, dy):
     L, M, k = cov['load'], cov['match'], cfg()
     am, pm = k['periods']['am'], k['periods']['pm']
@@ -878,6 +997,11 @@ Delivered service (observed bus-km against scheduled), all days of October:
 
 {verdict(L)}
 ''')
+    ph, pb, pt = plaus(con, L['E']['central'])
+    st = stability(con, L['E']['central'])
+    merge_checks(checks_key(ph, pt, st))
+    S.append(sec13(ph, pb, pt, k['censor_factor']))
+    S.append(sec14(st, unstable(rr, hi, '794DOWN')))
     return '\n'.join(S)
 
 

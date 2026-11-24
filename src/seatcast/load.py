@@ -145,7 +145,9 @@ def model(c, E):
         c[x] = np.minimum(e * c['calib'] * c['f'] / N, top)  # censored: well sampled, magnitude uncertain
     c['LF'] = c['L'] / c['seats']
     c['cv'] = np.sqrt(1 / c['n'].clip(lower=1) + c['cv_day'] ** 2 + run2)
-    c['p_seat'] = p_seat(c['L'].fillna(0), c['seats'], c['cv'])
+    # trip-to-trip spread only: day-to-day CV minus its sampling-noise share (scale / f), plus bus-to-bus run_cv
+    c['cv_trip'] = np.sqrt((c['cv_day'] ** 2 - c['scale'] / c['f']).clip(lower=0) + run2)
+    c['p_seat'] = p_seat(c['L'].fillna(0), c['seats'], c['cv_trip'])
     for x in ['low', '', 'high']:
         c['level' + (x and '_' + x)] = level(c['L' + (x and '_' + x)], c['seats'], c['total'])
     c['flag'] = np.select([c['N'] == 0, c['n'] < n], ['gap', 'low_n'], None)
