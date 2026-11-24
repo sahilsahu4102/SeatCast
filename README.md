@@ -29,7 +29,8 @@ Built for the **Delhi Transport Stack Hackathon 2026, Problem 2** (crowdedness-a
 10. [Tests and CI](#tests-and-ci)
 11. [Privacy](#privacy)
 12. [Troubleshooting](#troubleshooting)
-13. [Credits and licence](#credits-and-licence)
+13. [Team](#team)
+14. [Credits and licence](#credits-and-licence)
 
 ---
 
@@ -324,6 +325,15 @@ pytest -q
 | Port 8000 is already in use | Stop the other server, or run `python -m uvicorn seatcast.api:app --port 8001`. |
 | The map is blank | The map tiles come from OpenFreeMap over the internet; check the connection. Planning still works. |
 | 19 tests are skipped | Expected without `data/`; see [Tests and CI](#tests-and-ci). |
+
+---
+
+## Team
+
+| Member | GitHub | Role |
+|---|---|---|
+| Sahil Kumar Sahu | [@sahilsahu4102](https://github.com/sahilsahu4102) | Data pipeline, crowding model, journey planner, API and web app |
+| Sucharita Chattopadhyay | [@Sucharita2006](https://github.com/Sucharita2006) | Research and problem framing; data checks (what the ticket file is, stop-name matches); testing the planner and finding bugs; UI, design and Hindi text; proposal and technical note; demo video review; registration and organiser contact |
 
 ---
 
