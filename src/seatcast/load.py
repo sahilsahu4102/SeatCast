@@ -152,8 +152,9 @@ def model(c, E):
         c['level' + (x and '_' + x)] = level(c['L' + (x and '_' + x)], c['seats'], c['total'])
     c['flag'] = np.select([c['N'] == 0, c['n'] < n], ['gap', 'low_n'], None)
     q = k['confidence']
-    c['confidence'] = np.select([c['censored'], (c['n'] >= q['high_n']) & (c['rho'] >= q['high_rho']),
-                                 c['n'] >= q['med_n']], ['low', 'high', 'medium'], 'low')
+    # confidence = how well sampled and stable a cell is; a capped (censored) cell keeps it: the level is sure, only the size isn't
+    c['confidence'] = np.select([(c['n'] >= q['high_n']) & (c['rho'] >= q['high_rho']), c['n'] >= q['med_n']],
+                                ['high', 'medium'], 'low')
     bad = c['flag'].notna()
     c.loc[bad, ['L_low', 'L', 'L_high', 'LF', 'p_seat']] = np.nan
     c.loc[bad, ['level_low', 'level_high', 'confidence']] = None

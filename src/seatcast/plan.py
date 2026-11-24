@@ -195,7 +195,8 @@ def crowd(W, leg, dt):
              'text': f'Seat {odds} at boarding ({kk} of 10 trips) · crowded {cb[0]} to {cb[1]}' if cb
              else f'Seats on {kk} of 10 trips',
              'confidence': CONF[C.get('conf', i, 9)[j].min()], 'n': int(n[top]),
-             'range': [LV[C.lo[i[top]]], LV[C.hi[i[top]]]]}
+             'range': [LV[C.lo[i[top]]], LV[C.hi[i[top]]]],
+             'censored': bool(C.cen[i[j]].any())}  # some stretch's load is capped: level sure, size uncertain
     return c, segs, mins, mult
 
 
@@ -255,12 +256,15 @@ def summary(legs):
     c = [l['crowding'] for l in legs if l['mode'] == 'bus']
     if not c:
         return None
-    if any(x['level'] == NO for x in c):
-        x = next(x for x in c if x['level'] == NO)
-        return {'level': NO, 'p_seat': None, 'confidence': 'low', 'n': None, 'range': None, 'reason': x['reason']}
-    w = max(c, key=lambda x: LV.index(x['level']))
-    return {'level': w['level'], 'p_seat': min(x['p_seat'] for x in c),
-            'confidence': min((x['confidence'] for x in c), key=CONF.index), 'n': min(x['n'] for x in c), 'range': w['range']}
+    known = [x for x in c if x['level'] != NO]
+    if not known:  # no bus on the trip has data
+        return {'level': NO, 'p_seat': None, 'confidence': 'low', 'n': None, 'range': None, 'reason': c[0]['reason']}
+    # level from the buses we can estimate; a trip with an unknown bus is 'partial' and low confidence (the leg says which)
+    w, part = max(known, key=lambda x: LV.index(x['level'])), len(known) < len(c)
+    return {'level': w['level'], 'p_seat': min(x['p_seat'] for x in known),
+            'confidence': 'low' if part else min((x['confidence'] for x in known), key=CONF.index),
+            'n': min(x['n'] for x in known), 'range': w['range'], 'partial': part,
+            'censored': any(x.get('censored') for x in known)}
 
 
 def walk_only(W, a, b, t0):

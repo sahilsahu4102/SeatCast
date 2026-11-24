@@ -44,9 +44,9 @@ Commuters choose buses by time, but in Delhi whether you get a seat matters as m
 - **Confidence.**
   - High needs n ≥ 30 and week-to-week Spearman ρ ≥ 0.7; medium needs n ≥ 10.
   - Cells with fewer than 5 sampled riders are never published. The page says "limited data" instead.
-  - Shares of published cells: high 18.83%, medium 39.23%, low 41.94%.
+  - Shares of published cells: high 26.34%, medium 43.62%, low 30.04%.
 - **Censoring.** 12.3% of cells imply more than 1.5× a bus's total capacity, most of them on 717A UP, 717A DOWN, 717 UP, 717 DOWN, 717B DOWN.
-  - These cells are well sampled and certainly crushed, but the magnitude is implausible. We show them as crushed with low confidence, at 1.5× capacity.
+  - These cells are well sampled and certainly crushed, but the magnitude is implausible. We show them as crushed, capped at 1.5× capacity and marked "estimate uncertain"; their confidence badge still reflects how well they are sampled, because the level is sure and only the size is not.
 - **Expansion scenarios.** E low / central / high are carried through as a load range on every cell.
 
 ## 5. Validation

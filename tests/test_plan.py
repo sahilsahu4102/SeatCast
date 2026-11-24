@@ -199,3 +199,16 @@ def test_find_stops(W):
     assert W.names[plan.find(W, 'foxtrot co')[0]] == 'Foxtrot & Co'
     assert plan.find(W, '   ') == []
     assert plan.point(W, 'delta')['name'] == 'Delta'
+
+
+def test_summary_partial_and_censored():
+    from seatcast import plan
+    bus = lambda c: {'mode': 'bus', 'crowding': c}
+    few = {'level': plan.LV[1], 'p_seat': 0.96, 'confidence': 'high', 'n': 40, 'range': [plan.LV[1], plan.LV[1]], 'censored': False}
+    nd = {'level': plan.NO, 'p_seat': None, 'confidence': 'low', 'n': None, 'range': None, 'reason': 'low_n'}
+    crush = {'level': plan.LV[3], 'p_seat': 0.1, 'confidence': 'high', 'n': 90, 'range': [plan.LV[3], plan.LV[3]], 'censored': True}
+    s = plan.summary([bus(few), {'mode': 'walk'}, bus(nd)])  # the unknown second bus doesn't hide the first bus's seats
+    assert s['level'] == plan.LV[1] and s['partial'] and s['confidence'] == 'low'
+    s = plan.summary([bus(crush)])  # capped size, but well sampled: confidence stays high
+    assert s['level'] == plan.LV[3] and s['censored'] and s['confidence'] == 'high' and not s['partial']
+    assert plan.summary([bus(nd)])['level'] == plan.NO

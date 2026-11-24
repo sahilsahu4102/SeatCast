@@ -37,7 +37,7 @@
   function reduced() { return matchMedia('(prefers-reduced-motion: reduce)').matches; }
 
   // Very crowded with low confidence: the model caps loads far above capacity, so the number is uncertain.
-  function unsure(c) { return !!c && c.level === RANK[3] && c.confidence === 'low'; }
+  function unsure(c) { return !!c && (c.censored != null ? !!c.censored : c.level === RANK[3] && c.confidence === 'low'); }
 
   function chip(level, small, later) {
     level = level || ND;

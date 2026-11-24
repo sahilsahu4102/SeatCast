@@ -47,7 +47,7 @@ Commuters choose buses by time, but in Delhi whether you get a seat matters as m
   - Cells with fewer than {{cfg.min_cell_n}} sampled riders are never published. The page says "limited data" instead.
   - Shares of published cells: high {{cov.load.confidence_share_pct.high}}%, medium {{cov.load.confidence_share_pct.medium}}%, low {{cov.load.confidence_share_pct.low}}%.
 - **Censoring.** {{cov.load.censored_pct_of_cells:.1f}}% of cells imply more than {{cfg.censor_factor}}× a bus's total capacity, most of them on {{x.censored_routes}}.
-  - These cells are well sampled and certainly crushed, but the magnitude is implausible. We show them as crushed with low confidence, at {{cfg.censor_factor}}× capacity.
+  - These cells are well sampled and certainly crushed, but the magnitude is implausible. We show them as crushed, capped at {{cfg.censor_factor}}× capacity and marked "estimate uncertain"; their confidence badge still reflects how well they are sampled, because the level is sure and only the size is not.
 - **Expansion scenarios.** E low / central / high are carried through as a load range on every cell.
 
 ## 5. Validation
