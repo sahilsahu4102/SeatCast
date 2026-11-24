@@ -193,6 +193,12 @@ def test_checks_report():
     assert '{{' not in s and not re.search(r'\bnan\b', s, re.I)
 
 
+@need(CELLS)
+def test_sensitivity_section():
+    s = (ROOT / 'docs' / 'CHECKS.md').read_text(encoding='utf-8')
+    assert '## 16. Sensitivity: how robust are the published levels' in s
+
+
 @need(COV)
 def test_holdout_keys():
     h = json.loads(COV.read_text(encoding='utf-8')).get('validation', {}).get('holdout')

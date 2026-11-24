@@ -46,3 +46,4 @@ periods: {am: [7, 10], pm: [17, 20]}             # operator peak windows, hours 
 slot_window: 1                                   # ASSUMPTION: a cell's load pools flows and scheduled buses over slots b-1..b+1 (90 min), so sparse timetables don't leave false gaps (P3)
 calib: {enabled: false, crush_factor: 1.5, quantile: 0.95}   # OFF (23 Nov): with GPS-observed N, 837 routes holding 76% of digital riders exceed 1.5 x total at q95, so no route-level E keeps ridership_daily (cut-only would carry 69.5%). The excess is peak-shaped, not route-shaped; kept for the tech-note analysis
 censor_factor: 1.5                               # ASSUMPTION: a cell above 1.5 x total capacity is shown at 1.5 x total, level CRUSHED, confidence low (well-sampled, magnitude uncertain)
+sens_capacity: 0.15                              # ASSUMPTION: sensitivity check varies both seats and total capacity by 15%

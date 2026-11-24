@@ -8,6 +8,7 @@ import duckdb
 import pandas as pd
 
 from seatcast import OUT, RAW, ROOT, WORK, cfg, gtfs
+from seatcast.load import LEVELS, level as cell_level
 
 Z7 = r'C:\Program Files\7-Zip\7z.exe'
 ARC = RAW / 'gps' / 'delhi-dtc-bus-gtfs-rt-2026-10.7z'
@@ -1011,6 +1012,7 @@ Delivered service (observed bus-km against scheduled), all days of October:
     h = holdout(con, L['E']['central'])
     merge_val('holdout', hold_key(h))
     S.append(sec_hold(h))
+    S.append(sens(con))
     return '\n'.join(S)
 
 
@@ -1088,6 +1090,49 @@ def holdout(con, e):
         out[name] = {c: {x: float(v) for x, v in r.loc[c].items()} for c in r.index if c in ('all', 'high')}
     f.write_text(json.dumps(out))
     return out
+
+
+def sens(con):
+    k = cfg()
+    x = sql(con, f'''SELECT level, level_low, level_high, confidence, L, N_obs, N_sched, seats, total
+        FROM {CELLS} WHERE flag IS NULL AND level != 'NO_DATA_AVAILABLE' ''')
+    ix = {v: i for i, v in enumerate(LEVELS)}
+    cap = k['sens_capacity']
+    scenarios = [
+        ('Expansion low', x['level_low']),
+        ('Expansion high', x['level_high']),
+        (f'Capacity -{cap:.0%}', pd.Series(cell_level(x['L'], x['seats'] * (1 - cap), x['total'] * (1 - cap)), index=x.index)),
+        (f'Capacity +{cap:.0%}', pd.Series(cell_level(x['L'], x['seats'] * (1 + cap), x['total'] * (1 + cap)), index=x.index)),
+    ]
+    tt = x['N_sched'] > 0
+    scenarios.append(('Timetable buses', pd.Series(
+        cell_level(x.loc[tt, 'L'] * x.loc[tt, 'N_obs'] / x.loc[tt, 'N_sched'],
+                   x.loc[tt, 'seats'], x.loc[tt, 'total']), index=x.index[tt])))
+
+    rows = []
+    for name, levels in scenarios:
+        for label, sub in [('All published', x), ('High confidence', x[x['confidence'] == 'high'])]:
+            ids = sub.index.intersection(levels.index)
+            a = sub.loc[ids, 'level'].map(ix).to_numpy()
+            b = levels.loc[ids].map(ix).to_numpy()
+            n = len(ids)
+            crushed = ((a == 3) != (b == 3)).mean() if n else 0
+            rows.append({'scenario': name, 'group': label, 'cells': n,
+                         'same': (a == b).mean() if n else 0,
+                         'within': (abs(a - b) <= 1).mean() if n else 0,
+                         'crushed': crushed})
+
+    all_rows = [r for r in rows if r['group'] == 'All published']
+    most = max(all_rows, key=lambda r: r['same'])
+    least = min(all_rows, key=lambda r: r['same'])
+    return f'''## 16. Sensitivity: how robust are the published levels
+
+Each scenario is compared with the published level; expansion scenarios use the existing low/high levels, while capacity scenarios recompute with both seats and total capacity changed by the configured ±{cap:.0%}. The timetable scenario uses L × N_obs / N_sched and excludes cells with N_sched ≤ 0. “Moves to/from crushed” is the share that changes between crushed and not crushed. High confidence uses the existing confidence labels.
+
+{table(rows, [('scenario', 'scenario'), ('group', 'group'), ('cells', 'cells'), ('same level', 'same'), ('within one level', 'within'), ('moves to/from crushed', 'crushed')], {'cells': ',', 'same': '.1%', 'within': '.1%', 'crushed': '.1%'})}
+
+By exact-level agreement across all published cells, the most robust scenario is {most['scenario']} ({most['same']:.1%}) and the least robust is {least['scenario']} ({least['same']:.1%}).
+'''
 
 
 def hold_key(h):

@@ -303,12 +303,12 @@ Level recomputed from week 1 and week 2 weekday flow (same N_obs, capacity and E
 | comparison | confidence | cells | same level | within one level |
 |---|---|---|---|---|
 | week 1 vs week 2 | all | 1,123,195 | 58.8% | 89.1% |
+| week 1 vs week 2 | low | 205,930 | 63.8% | 88.7% |
 | week 1 vs week 2 | medium | 496,452 | 51.9% | 84.4% |
 | week 1 vs week 2 | high | 420,813 | 64.5% | 95.0% |
-| week 1 vs week 2 | low | 205,930 | 63.8% | 88.7% |
 | odd vs even days (ceiling) | all | 1,123,195 | 62.5% | 92.4% |
-| odd vs even days (ceiling) | high | 420,813 | 67.8% | 96.6% |
 | odd vs even days (ceiling) | medium | 496,452 | 56.7% | 89.5% |
+| odd vs even days (ceiling) | high | 420,813 | 67.8% | 96.6% |
 | odd vs even days (ceiling) | low | 205,930 | 65.8% | 90.7% |
 
 Unstable routes: 794DOWN has rho 0.28 against the 0.7 threshold, so it is unstable (rank 3 by sampled passengers among the unstable routes).
@@ -328,3 +328,22 @@ Crushed against not crushed (all cells, 858,888 cells):
 |---|---|---|
 | crushed | 301,305 | 42,407 |
 | not crushed | 89,802 | 425,374 |
+
+## 16. Sensitivity: how robust are the published levels
+
+Each scenario is compared with the published level; expansion scenarios use the existing low/high levels, while capacity scenarios recompute with both seats and total capacity changed by the configured ±15%. The timetable scenario uses L × N_obs / N_sched and excludes cells with N_sched ≤ 0. “Moves to/from crushed” is the share that changes between crushed and not crushed. High confidence uses the existing confidence labels.
+
+| scenario | group | cells | same level | within one level | moves to/from crushed |
+|---|---|---|---|---|---|
+| Expansion low | All published | 2,312,455 | 62.7% | 100.0% | 9.6% |
+| Expansion low | High confidence | 609,099 | 57.5% | 100.0% | 16.5% |
+| Expansion high | All published | 2,312,455 | 96.7% | 100.0% | 1.0% |
+| Expansion high | High confidence | 609,099 | 96.7% | 100.0% | 1.5% |
+| Capacity -15% | All published | 2,312,455 | 82.1% | 100.0% | 5.4% |
+| Capacity -15% | High confidence | 609,099 | 82.7% | 100.0% | 8.0% |
+| Capacity +15% | All published | 2,312,455 | 84.9% | 100.0% | 4.1% |
+| Capacity +15% | High confidence | 609,099 | 84.0% | 100.0% | 6.7% |
+| Timetable buses | All published | 2,312,455 | 59.9% | 94.9% | 14.0% |
+| Timetable buses | High confidence | 609,099 | 47.8% | 93.3% | 27.4% |
+
+By exact-level agreement across all published cells, the most robust scenario is Expansion high (96.7%) and the least robust is Timetable buses (59.9%).
