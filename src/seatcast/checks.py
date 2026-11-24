@@ -1008,6 +1008,9 @@ Delivered service (observed bus-km against scheduled), all days of October:
     merge_checks(checks_key(ph, pt, st))
     S.append(sec13(ph, pb, pt, k['censor_factor']))
     S.append(sec14(st, unstable(rr, hi, '794DOWN')))
+    h = holdout(con, L['E']['central'])
+    merge_val('holdout', hold_key(h))
+    S.append(sec_hold(h))
     return '\n'.join(S)
 
 
@@ -1022,3 +1025,105 @@ def run():
     md = build(con, cov, gp, dy)
     (ROOT / 'docs' / 'CHECKS.md').write_text(md, encoding='utf-8')
     print('checks: docs/CHECKS.md written', round(time.time() - t0, 1), 's')
+
+
+# ---------- validation 1: hold-out (weeks 1-3 predict week 4) ----------
+
+HOLD = '''
+CREATE OR REPLACE TEMP TABLE w AS SELECT route_id, s0, s1, slot + j slot, daytype, g, SUM(pax) pax, SUM(n) n
+  FROM {flows} f JOIN dg ON CAST(f.date AS DATE) = dg.date, (SELECT unnest(range(-{w}, {w} + 1)) j)
+  WHERE slot + j BETWEEN 0 AND {last} GROUP BY ALL;
+CREATE OR REPLACE TEMP TABLE h AS SELECT route_id, s0, s1, slot, daytype,
+  SUM(pax) FILTER (WHERE g = 'tr') / any_value(nd) FILTER (WHERE g = 'tr') ftr, SUM(n) FILTER (WHERE g = 'tr') ntr,
+  SUM(pax) FILTER (WHERE g = 'te') / any_value(nd) FILTER (WHERE g = 'te') fte, SUM(n) FILTER (WHERE g = 'te') nte,
+  SUM(pax) FILTER (WHERE g = 'ha') / any_value(nd) FILTER (WHERE g = 'ha') fha, SUM(n) FILTER (WHERE g = 'ha') nha,
+  SUM(pax) FILTER (WHERE g = 'hb') / any_value(nd) FILTER (WHERE g = 'hb') fhb, SUM(n) FILTER (WHERE g = 'hb') nhb
+  FROM (SELECT w.*, d.nd FROM w JOIN dn d USING (g, daytype)) GROUP BY ALL;
+CREATE OR REPLACE MACRO lv(f, N, s, t, e) AS CASE WHEN f * e / N / s < {many} THEN 0
+  WHEN f * e / N / s < {few} THEN 1 WHEN f * e / N < t THEN 2 ELSE 3 END;
+'''
+
+
+def hold_days(k):
+    # tr = weeks 1-3, split into halves ha/hb by alternating days within each day type; te = week 4. Anomaly days dropped
+    d = pd.read_csv(WORK / 'daily.csv', parse_dates=['date'])
+    d = d[~d['flag']].sort_values('date')
+    w = [(pd.Timestamp(a), pd.Timestamp(b)) for a, b in k['weeks']]
+    tr = d[d['date'].between(w[0][0], w[2][1])].copy()
+    tr['r'] = tr.groupby('daytype').cumcount()
+    rows = [(x.date(), 'tr', t) for x, t in zip(tr['date'], tr['daytype'])]
+    rows += [(x.date(), 'ha' if r % 2 == 0 else 'hb', t) for x, r, t in zip(tr['date'], tr['r'], tr['daytype'])]
+    te = d[d['date'].between(*w[3])]
+    rows += [(x.date(), 'te', t) for x, t in zip(te['date'], te['daytype'])]
+    return pd.DataFrame(rows, columns=['date', 'g', 'daytype'])
+
+
+def agree(con, e, a, b, nmin):
+    # per confidence subset: same level, within one, and predicted (a) vs observed (b) crushed = level 3
+    x, y = (f'lv(f{c}, N_obs, seats, total, {e} * calib)' for c in (a, b))
+    r = sql(con, f'''SELECT CASE WHEN grouping(confidence) = 1 THEN 'all' ELSE confidence END conf, count(*) n_cells,
+        avg(({x} = {y})::INT) same, avg((abs({x} - {y}) <= 1)::INT) within_one,
+        count(*) FILTER (WHERE {x} = 3 AND {y} = 3) cc, count(*) FILTER (WHERE {x} = 3 AND {y} < 3) cn,
+        count(*) FILTER (WHERE {x} < 3 AND {y} = 3) nc, count(*) FILTER (WHERE {x} < 3 AND {y} < 3) nn
+        FROM x WHERE n{a} >= {nmin} AND n{b} >= {nmin} GROUP BY ROLLUP (confidence)''')
+    return r.set_index('conf')
+
+
+def holdout(con, e):
+    k = cfg()
+    f = WORK / 'holdout.json'
+    src = [WORK / 'flows.parquet', OUT / 'cells.parquet', WORK / 'daily.csv']
+    if f.exists() and all(f.stat().st_mtime > s.stat().st_mtime for s in src):
+        return json.loads(f.read_text())
+    dg = hold_days(k)
+    con.register('dg', dg[['date', 'g']])
+    con.register('dn', dg.groupby(['g', 'daytype']).size().rename('nd').reset_index())
+    con.execute(HOLD.format(flows=q1(WORK / 'flows.parquet'), w=k['slot_window'], last=24 * 60 // k['slot_min'] - 1, **k['levels']))
+    con.execute(f'''CREATE OR REPLACE TEMP TABLE x AS SELECT h.*, k.* EXCLUDE (route_id, s0, s1, slot, daytype) FROM h JOIN
+        (SELECT route_id, from_stop s0, to_stop s1, slot, daytype, N_obs, seats, total, calib, confidence
+         FROM {CELLS} WHERE flag IS NULL AND N_obs > 0) k USING (route_id, s0, s1, slot, daytype)''')
+    out = {'days': {g: int(n) for g, n in dg.groupby('g').size().items()}}
+    for name, (a, b) in {'holdout': ('tr', 'te'), 'ceiling': ('ha', 'hb')}.items():
+        r = agree(con, e, a, b, k['min_cell_n'])
+        out[name] = {c: {x: float(v) for x, v in r.loc[c].items()} for c in r.index if c in ('all', 'high')}
+    f.write_text(json.dumps(out))
+    return out
+
+
+def hold_key(h):
+    a, c = h['holdout'], h['ceiling']
+
+    def sub(s):
+        return {'same_level': a[s]['same'], 'within_one': a[s]['within_one'], 'ceiling_same': c[s]['same'],
+                'ceiling_within': c[s]['within_one'], 'n_cells': int(a[s]['n_cells']), 'ceiling_n_cells': int(c[s]['n_cells']),
+                'crushed': {k_: int(a[s][k_]) for k_ in ('cc', 'cn', 'nc', 'nn')}}
+    return {**sub('all'), 'high': sub('high'), 'days': h['days']}
+
+
+def sec_hold(h):
+    a, c = h['holdout'], h['ceiling']
+    rows = [{'s': s, 'n': int(a[s]['n_cells']), 'same': a[s]['same'], 'w1': a[s]['within_one'], 'cn': int(c[s]['n_cells']),
+             'cs': c[s]['same'], 'cw': c[s]['within_one']} for s in ('all', 'high')]
+    cm = a['all']
+    tot = cm['cc'] + cm['cn'] + cm['nc'] + cm['nn']
+    d = h['days']
+    return f'''## 15. Hold-out: weeks 1-3 predict week 4
+
+The published level is rebuilt from the flow of weeks 1-3 only ({d['tr']} days after dropping anomaly days), with the same N_obs, capacity, calibration and E as the published model, and compared per cell with the level from week 4 alone ({d['te']} days, 26-31 Oct). Cells need at least {cfg()['min_cell_n']} sampled passengers on each side. The noise ceiling splits weeks 1-3 into two halves of days (alternating days within each day type) and compares the halves the same way, so it shows what sampling noise alone allows; each half has less data than weeks 1-3, so the ceiling is conservative.
+
+{table([dict(r, s={'all': 'all cells', 'high': 'high-confidence cells'}[r['s']]) for r in rows], [('cells', 's'), ('n cells', 'n'), ('same level', 'same'), ('within one level', 'w1'), ('ceiling n cells', 'cn'), ('ceiling same', 'cs'), ('ceiling within one', 'cw')], {'n': ',', 'cn': ',', 'same': '.1%', 'w1': '.1%', 'cs': '.1%', 'cw': '.1%'})}
+
+Crushed against not crushed (all cells, {int(tot):,} cells):
+
+| predicted from weeks 1-3 / observed in week 4 | crushed | not crushed |
+|---|---|---|
+| crushed | {int(cm['cc']):,} | {int(cm['cn']):,} |
+| not crushed | {int(cm['nc']):,} | {int(cm['nn']):,} |
+'''
+
+
+def merge_val(k, d):
+    f = OUT / 'coverage.json'
+    cov = json.loads(f.read_text(encoding='utf-8'))
+    cov.setdefault('validation', {})[k] = d
+    f.write_text(json.dumps(cov, indent=2, default=str), encoding='utf-8')

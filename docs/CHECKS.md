@@ -307,8 +307,24 @@ Level recomputed from week 1 and week 2 weekday flow (same N_obs, capacity and E
 | week 1 vs week 2 | high | 420,813 | 64.5% | 95.0% |
 | week 1 vs week 2 | low | 205,930 | 63.8% | 88.7% |
 | odd vs even days (ceiling) | all | 1,123,195 | 62.5% | 92.4% |
-| odd vs even days (ceiling) | medium | 496,452 | 56.7% | 89.5% |
 | odd vs even days (ceiling) | high | 420,813 | 67.8% | 96.6% |
+| odd vs even days (ceiling) | medium | 496,452 | 56.7% | 89.5% |
 | odd vs even days (ceiling) | low | 205,930 | 65.8% | 90.7% |
 
 Unstable routes: 794DOWN has rho 0.28 against the 0.7 threshold, so it is unstable (rank 3 by sampled passengers among the unstable routes).
+
+## 15. Hold-out: weeks 1-3 predict week 4
+
+The published level is rebuilt from the flow of weeks 1-3 only (21 days after dropping anomaly days), with the same N_obs, capacity, calibration and E as the published model, and compared per cell with the level from week 4 alone (6 days, 26-31 Oct). Cells need at least 5 sampled passengers on each side. The noise ceiling splits weeks 1-3 into two halves of days (alternating days within each day type) and compares the halves the same way, so it shows what sampling noise alone allows; each half has less data than weeks 1-3, so the ceiling is conservative.
+
+| cells | n cells | same level | within one level | ceiling n cells | ceiling same | ceiling within one |
+|---|---|---|---|---|---|---|
+| all cells | 858,888 | 64.9% | 95.0% | 1,011,800 | 67.0% | 97.0% |
+| high-confidence cells | 516,849 | 71.1% | 97.9% | 589,280 | 69.6% | 97.3% |
+
+Crushed against not crushed (all cells, 858,888 cells):
+
+| predicted from weeks 1-3 / observed in week 4 | crushed | not crushed |
+|---|---|---|
+| crushed | 301,305 | 42,407 |
+| not crushed | 89,802 | 425,374 |

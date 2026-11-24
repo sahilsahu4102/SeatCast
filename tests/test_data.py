@@ -191,3 +191,13 @@ def test_note_filled():
 def test_checks_report():
     s = (ROOT / 'docs' / 'CHECKS.md').read_text(encoding='utf-8')
     assert '{{' not in s and not re.search(r'\bnan\b', s, re.I)
+
+
+@need(COV)
+def test_holdout_keys():
+    h = json.loads(COV.read_text(encoding='utf-8')).get('validation', {}).get('holdout')
+    if h is None:
+        pytest.skip('run checks first')
+    for d in (h, h['high']):
+        assert {'same_level', 'within_one', 'ceiling_same', 'ceiling_within', 'n_cells'} <= d.keys()
+        assert 0 <= d['same_level'] <= d['within_one'] <= 1 and d['n_cells'] > 0
