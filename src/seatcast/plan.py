@@ -20,7 +20,7 @@ DT = ['weekday', 'saturday', 'sunday']
 CONF = ['low', 'medium', 'high']
 WHY = [None, 'schedule_gap', 'implausible', 'low_n']  # 0 ok, 1 gap, 2 absurd, 3 no published cell (n < min_cell_n)
 COLS = ['route_id', 'from_stop', 'to_stop', 'slot', 'daytype', 'n', 'N_sched', 'L_low', 'L', 'L_high', 'LF', 'p_seat',
-        'level_low', 'level', 'level_high', 'flag', 'confidence', 'seats', 'total', 'censored']
+        'level_low', 'level', 'level_high', 'flag', 'confidence', 'seats', 'total', 'censored', 'N_obs']
 NOTE = 'Estimates from Oct 2026 app e-tickets expanded to total ridership; see /coverage'
 DAY = 86400
 
@@ -51,7 +51,8 @@ class Cells:
              'lv': enc(c['level'], codes(LV), 4), 'lo': enc(c['level_low'], codes(LV), 4),
              'hi': enc(c['level_high'], codes(LV), 4), 'why': enc(c['flag'], {'gap': 1, 'absurd': 2}, 0),
              'conf': enc(c['confidence'], codes(CONF))}
-        for n in ['n', 'N_sched', 'L_low', 'L', 'L_high', 'LF', 'p_seat', 'seats', 'total']:
+        c = c if 'N_obs' in c else c.assign(N_obs=c['N_sched'])  # outputs without GPS service: timetable buses
+        for n in ['n', 'N_sched', 'N_obs', 'L_low', 'L', 'L_high', 'LF', 'p_seat', 'seats', 'total']:
             x[n] = c[n].to_numpy(np.float64)
         x['cen'] = c['censored'].fillna(False).to_numpy(bool) if 'censored' in c else np.zeros(len(c), bool)
         self.__dict__.update({n: v[ok][o] for n, v in x.items()})
@@ -87,7 +88,8 @@ class World:
 def read_cells(f=None):
     f = f or OUT / 'cells.parquet'
     s = ['route_id', 'from_stop', 'to_stop', 'daytype', 'level_low', 'level', 'level_high', 'flag', 'confidence']
-    return pq.read_table(f, columns=COLS, read_dictionary=s).to_pandas()
+    have = set(pq.read_schema(f).names)  # older outputs may lack N_obs or censored
+    return pq.read_table(f, columns=[c for c in COLS if c in have], read_dictionary=s).to_pandas()
 
 
 def route_meta(d=None):

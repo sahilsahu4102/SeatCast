@@ -11,7 +11,7 @@
 
   var s = {stops: [], box: null, from: null, to: null, daytype: DEFAULT.daytype, time: DEFAULT.time,
            pref: 'fastest', res: null, sel: null, status: 'idle', err: '', picking: null, seq: 0, tab: 'planner'};
-  var op = {day: 'weekday', hour: 18, period: 'all', rows: null, err: false, sort: {k: 'plus1_benefit', d: -1},
+  var op = {day: 'weekday', hour: 18, period: 'all', rows: null, err: false, sort: {k: 'gap_obs', d: -1},
             sel: null, prof: null, heat: null, hseq: 0, pseq: 0, tseq: 0, keys: [], started: false};
   var cov = {res: null, err: false, started: false};
   var map = null, mapReady = false, popup = null;
@@ -620,7 +620,7 @@
   var COLS = [
     {k: 'route', l: 'op.c.route'},
     {k: 'plus1_benefit', l: 'op.c.plus1', n: 1}, {k: 'standee_min', l: 'op.c.standee', n: 1}, {k: 'F_req', l: 'op.c.buses', n: 1},
-    {k: 'gap', l: 'op.c.gap', n: 1}, {k: 'LF_max', l: 'op.c.lf', n: 1}, {k: 'P_max', l: 'op.c.pax', n: 1}];
+    {k: 'gap_obs', l: 'op.c.gap', n: 1}, {k: 'LF_max', l: 'op.c.lf', n: 1}, {k: 'P_max', l: 'op.c.pax', n: 1}];
 
   function rowKey(r) { return r.route + '@' + r.hour; }
   function routeLabel(r) { return r.base + ' ' + r.dir; }
@@ -668,8 +668,8 @@
         '<span class="st"><span class="sr-only">' + esc(t('op.c.stretch')) + ': </span><span lang="en">' + esc(r.max_from) + ' → ' + esc(r.max_to) + '</span></span></th>' +
         '<td class="n b">' + num(r.plus1_benefit) + '</td>' +
         '<td class="n">' + num(r.standee_min) + '</td>' +
-        '<td class="n">' + buses1(r.F_sched) + ' → ' + buses1(r.F_req) + '</td>' +
-        '<td class="n">+' + buses1(r.gap) + '</td>' +
+        '<td class="n">' + buses1(r.F_obs) + ' → ' + buses1(r.F_req) + '</td>' +
+        '<td class="n">+' + buses1(r.gap_obs) + '</td>' +
         '<td class="n">' + num(r.LF_max, 1) + '×' + (r.censored ? ' <span class="unc">' + esc(t('censored.short')) + '</span>' : '') + '</td>' +
         '<td class="n">' + num(r.P_max) + '</td></tr>';
     }).join('');

@@ -155,8 +155,9 @@ def heat(W, dt, h):
     # one line per stop pair: passengers over seats across every route's buses in the hour
     C, k = W.cells, cfg()
     m = (C.d == plan.DT.index(dt)) & (C.s // (60 // k['slot_min']) == h) & (C.why == 0)
-    df = pd.DataFrame({'a': C.a[m], 'b': C.b[m], 'r': C.r[m], 'LN': C.L[m] * C.N_sched[m],
-                       'SN': C.seats[m] * C.N_sched[m], 'TN': C.total[m] * C.N_sched[m], 'cen': C.cen[m]})
+    N = C.N_obs[m]  # buses that actually ran (GPS), the same N the loads use
+    df = pd.DataFrame({'a': C.a[m], 'b': C.b[m], 'r': C.r[m], 'LN': C.L[m] * N,
+                       'SN': C.seats[m] * N, 'TN': C.total[m] * N, 'cen': C.cen[m]})
     g = df.groupby(['a', 'b']).agg(LN=('LN', 'sum'), SN=('SN', 'sum'), TN=('TN', 'sum'), routes=('r', 'nunique'),
                                    cen=('cen', 'any'))
     g = g[g['SN'] > 0]
@@ -186,19 +187,21 @@ def heatmap(daytype: Day = 'weekday', hour: int = Query(8, ge=0, le=23)):
     return heat(S['w'], daytype, hour)
 
 
-OPS = ['route', 'base', 'dir', 'daytype', 'hour', 'P_max', 'F_req', 'F_sched', 'gap', 'standee_min', 'plus1_benefit',
+OPS = ['route', 'base', 'dir', 'daytype', 'hour', 'P_max', 'F_req', 'F_sched', 'F_obs', 'gap', 'gap_obs', 'standee_min', 'plus1_benefit',
        'LF_max', 'max_from', 'max_to']
 
 
 @app.get('/operator/top')
 def top(daytype: Day = 'weekday', period: Literal['am', 'pm', 'all'] = 'all'):
     o = S['w'].op
+    o = o if 'gap_obs' in o else o.assign(F_obs=o['F_sched'], gap_obs=o['gap'])  # outputs without GPS service
     o = o[o['daytype'] == daytype]
     if period != 'all':
         a, b = cfg()['periods'][period]
         o = o[(o['hour'] >= a) & (o['hour'] < b)]
-    o = o.nlargest(20, 'plus1_benefit')[OPS].round({'P_max': 0, 'F_sched': 1, 'gap': 1, 'standee_min': 0,
-                                                     'plus1_benefit': 0, 'LF_max': 2})
+    # shortfall against the buses that actually ran ranks first; the +1-bus benefit breaks ties (jury review item 6)
+    o = o.sort_values(['gap_obs', 'plus1_benefit'], ascending=False).head(20)[OPS].round(
+        {'P_max': 0, 'F_sched': 1, 'F_obs': 1, 'gap': 1, 'gap_obs': 1, 'standee_min': 0, 'plus1_benefit': 0, 'LF_max': 2})
     rows = json.loads(o.to_json(orient='records'))
     cen = censored_hours(S['w'])
     for x, rid in zip(rows, o.index.map(S['w'].op['route_id'])):
