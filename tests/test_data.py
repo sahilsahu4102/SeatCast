@@ -17,6 +17,7 @@ PAT, PS, NET = M / 'patterns.parquet', M / 'pattern_stops.parquet', WORK / 'netw
 FEED = RAW / 'gtfs' / 'stops.txt'
 OD, COV, PART = WORK / 'od.parquet', OUT / 'coverage.json', WORK / 'od_partial.parquet'
 CELLS, OPER = OUT / 'cells.parquet', OUT / 'operator.parquet'
+FINDINGS = ROOT / 'docs' / 'FINDINGS.md'
 LV = ['MANY_SEATS_AVAILABLE', 'FEW_SEATS_AVAILABLE', 'STANDING_ROOM_ONLY', 'CRUSHED_STANDING_ROOM_ONLY']
 PLATE = re.compile(r'DL ?\d{1,2} ?[A-Z]{1,3} ?\d{4}')
 
@@ -191,6 +192,12 @@ def test_note_filled():
 def test_checks_report():
     s = (ROOT / 'docs' / 'CHECKS.md').read_text(encoding='utf-8')
     assert '{{' not in s and not re.search(r'\bnan\b', s, re.I)
+
+
+@need(CELLS, OPER, COV)
+def test_findings_report():
+    s = FINDINGS.read_text(encoding='utf-8')
+    assert len(re.findall(r'^## Finding F[1-5] — ', s, re.M)) == 5
 
 
 @need(CELLS)

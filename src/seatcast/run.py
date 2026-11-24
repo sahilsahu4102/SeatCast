@@ -9,12 +9,13 @@ STEPS = {
     'flows': 'flows:run',
     'load': 'load:run',
     'checks': 'checks:run',
+    'findings': 'findings:run',
     'gps': 'checks:gps',
     'note': 'checks:note',
     'plan': 'plan:cli',
     'serve': 'api:serve',
 }
-PIPE = ['day0', 'ingest', 'match', 'flows', 'load', 'checks', 'note']
+PIPE = ['day0', 'ingest', 'match', 'flows', 'load', 'checks', 'findings', 'note']
 
 
 def step(name, args):
