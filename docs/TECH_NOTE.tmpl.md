@@ -39,8 +39,8 @@ Commuters choose buses by time, but in Delhi whether you get a seat matters as m
 
 ## 4. Uncertainty
 
-- **Variation.** cv² = 1/n (sampling) + cv_day² (day-to-day) + {{cfg.run_cv}}² (bus-to-bus bunching, an assumption). This full cv sets the range and the confidence badge.
-- **Seat probability.** The load on a given bus is treated as lognormal with mean L and the **trip-to-trip** variation only: cv_trip² = max(cv_day² − sampling part, 0) + {{cfg.run_cv}}². Sampling noise says how sure we are of the average, not how much one bus differs from the next, so it is left out (median cv {{x.cv_med:.2f}} → cv_trip {{x.cv_trip_med:.2f}}). **P(seat) = P(load < seats)**; once a rider gets a seat, they keep it for the rest of the leg.
+- **Variation.** cv² = 1/n (sampling) + cv_day² (day-to-day) + run_cv² (bus-to-bus variation, measured from GPS headways: median {{x.run_cv_med:.2f}}, see `docs/CHECKS.md` §17). This full cv sets the range and the confidence badge.
+- **Seat probability.** The load on a given bus is treated as lognormal with mean L and the **trip-to-trip** variation only: cv_trip² = max(cv_day² − sampling part, 0) + run_cv². Sampling noise says how sure we are of the average, not how much one bus differs from the next, so it is left out (median cv {{x.cv_med:.2f}} → cv_trip {{x.cv_trip_med:.2f}}). **P(seat) = P(load < seats)**; once a rider gets a seat, they keep it for the rest of the leg.
 - **Levels.** Load factor maps to GTFS-Realtime occupancy levels [R13]: many seats < 0.5 of seats, few seats < 1.0, standing < total capacity, crushed above that.
 - **Confidence.**
   - High needs n ≥ {{cfg.confidence.high_n}} and week-to-week Spearman ρ ≥ {{cfg.confidence.high_rho}}; medium needs n ≥ {{cfg.confidence.med_n}}.

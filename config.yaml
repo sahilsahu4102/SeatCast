@@ -7,7 +7,8 @@ anomaly_dev: 0.3                                 # flag a date if |pax / same-we
 weeks: [["2026-10-05", "2026-10-11"], ["2026-10-12", "2026-10-18"], ["2026-10-19", "2026-10-25"], ["2026-10-26", "2026-10-31"]]
 ridership_daily: {central: 3960000, high: 4080000}  # central = DTC 2025-26 [R3] + cluster FY24-25 [R4]; high = DTC + cluster FY24-25 [R4]. D-03
 e_low_factor: 0.7                                # ASSUMPTION
-run_cv: 0.35                                     # ASSUMPTION
+run_cv: 0.35                                     # ASSUMPTION: only the fallback now, for route-bands with no GPS headways (see run_cv_from_gps)
+run_cv_from_gps: true                            # use the bus-to-bus variation measured from GPS headways (config/service_cv.csv, built by `run bunching`)
 min_cell_n: 5
 confidence: {high_n: 30, med_n: 10, high_rho: 0.7}
 match: {accept: 88, maybe: 75, margin: 5}
@@ -35,6 +36,9 @@ gps:                                             # P4b ground truth (D-05)
   km_dt: [1, 120]                                # bus-km: seconds between consecutive pings counted
   km_step: [10, 1000]                            # bus-km: metres per step counted (drops GPS jitter and jumps)
   ratio_clamp: [0.25, 1.5]                       # ASSUMPTION: delivery ratios outside this are GPS gaps or deadheading, not service; P3 clamps
+  hw_max_s: 7200                                # headways above 2 h are service breaks, not bunching
+  hw_min_m: 4                                    # ASSUMPTION: a day-stop-band window needs 4 headways to give a CV
+  cv_shrink: 30                                  # ASSUMPTION: measured CV shrinks to the network median with 30 headway degrees of freedom
   shrink_trips: 10                              # ASSUMPTION: ratio = (obs + 10) / (sched + 10) trips over the days pooled, so thin route-bands stay near 1
 service_from_gps: true                           # scale scheduled buses N by the GPS delivery ratio of route, day type and hour band (P3 + P4b)
 match_geo_m: 300                                 # ASSUMPTION: a name found city-wide may snap to a route stop this close (P2 rung f)

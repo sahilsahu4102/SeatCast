@@ -38,8 +38,8 @@ Commuters choose buses by time, but in Delhi whether you get a seat matters as m
 
 ## 4. Uncertainty
 
-- **Variation.** cv² = 1/n (sampling) + cv_day² (day-to-day) + 0.35² (bus-to-bus bunching, an assumption). This full cv sets the range and the confidence badge.
-- **Seat probability.** The load on a given bus is treated as lognormal with mean L and the **trip-to-trip** variation only: cv_trip² = max(cv_day² − sampling part, 0) + 0.35². Sampling noise says how sure we are of the average, not how much one bus differs from the next, so it is left out (median cv 0.87 → cv_trip 0.42). **P(seat) = P(load < seats)**; once a rider gets a seat, they keep it for the rest of the leg.
+- **Variation.** cv² = 1/n (sampling) + cv_day² (day-to-day) + run_cv² (bus-to-bus variation, measured from GPS headways: median 0.62, see `docs/CHECKS.md` §17). This full cv sets the range and the confidence badge.
+- **Seat probability.** The load on a given bus is treated as lognormal with mean L and the **trip-to-trip** variation only: cv_trip² = max(cv_day² − sampling part, 0) + run_cv². Sampling noise says how sure we are of the average, not how much one bus differs from the next, so it is left out (median cv 1.06 → cv_trip 0.75). **P(seat) = P(load < seats)**; once a rider gets a seat, they keep it for the rest of the leg.
 - **Levels.** Load factor maps to GTFS-Realtime occupancy levels [R13]: many seats < 0.5 of seats, few seats < 1.0, standing < total capacity, crushed above that.
 - **Confidence.**
   - High needs n ≥ 30 and week-to-week Spearman ρ ≥ 0.7; medium needs n ≥ 10.
@@ -80,7 +80,7 @@ The rules are: a exact name, b reviewed or GPS-evidenced alias, c guarded fuzzy 
 | True | 18.0 | 268,902 | 7.7 | 10.0 | 12.7 |
 | True | 22.5 | 231,879 | 12.5 | 17.8 | 29.3 |
 
-- **Hold-out forecast.** Levels built from weeks 1–3 alone predict week 4 within one level on **95.0%** of 858,888 cells (same level 64.9%), against 97.0% / 67.0% for two halves of the same weeks; high-confidence cells reach 97.9%, at the noise ceiling (`docs/CHECKS.md` §15). A GPS dwell-time check (stop dwell against predicted activity per bus) was too weak to use: pings every ~11 s are too coarse.
+- **Hold-out forecast.** Levels built from weeks 1–3 alone predict week 4 within one level on **95.0%** of 858,886 cells (same level 64.9%), against 97.0% / 67.0% for two halves of the same weeks; high-confidence cells reach 97.9%, at the noise ceiling (`docs/CHECKS.md` §15). A GPS dwell-time check (stop dwell against predicted activity per bus) was too weak to use: pings every ~11 s are too coarse.
 - **Known patterns** (details in `docs/CHECKS.md`).
   - On-board load (segment flows) peaks on weekdays at 9:00 and 19:00, with the low at 14:00. Boardings by hour are in `docs/CHECKS.md` §3.
   - Weekday loads exceed Sunday loads on 75.6% of shared cells.

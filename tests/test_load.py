@@ -48,3 +48,18 @@ def test_cv_trip_not_above_cv_and_censor():
     assert r['censored'].tolist() == [False, False] and r['L'].tolist() == [2.0, 8.0]
     h = load.model(c.assign(f=[800.0, 800.0], scale=1.0), {'low': 1.0, 'central': 1.0, 'high': 1.0})
     assert h['censored'].all() and (h['L'] == 90).all() and set(h['confidence']) <= {'high', 'medium', 'low'}
+
+
+def test_run_cv_per_route_band_with_median_fallback():
+    c = pd.DataFrame({'route_id': ['A', 'A', 'C'], 'daytype': 'weekday', 'h': [8, 18, 8]})
+    r = pd.DataFrame({'route_id': ['A', 'A', 'B'], 'daytype': 'weekday', 'band': [7, 17, 7], 'run_cv': [0.2, 0.6, 0.4]})
+    o = load.attach_run_cv(c, r, 'h')
+    assert o['run_cv'].tolist() == [0.2, 0.6, 0.4]  # C has no row: the median of 0.2, 0.6, 0.4
+    assert load.attach_run_cv(c, None, 'h')['run_cv'].tolist() == [0.35] * 3
+
+
+def test_model_uses_measured_run_cv():
+    c = pd.DataFrame({'N': [4.0, 4.0], 'N_obs': [4.0, 4.0], 'n': [50.0, 50.0], 'calib': 1.0, 'f': [8.0, 8.0],
+                      'total': 60.0, 'seats': 39.0, 'cv_day': [0.9, 0.9], 'scale': [2.0, 2.0], 'rho': 0.9, 'run_cv': [0.1, 0.9]})
+    r = load.model(c, {'low': 1.0, 'central': 1.0, 'high': 1.0})
+    assert r.loc[0, 'cv_trip'] < r.loc[1, 'cv_trip'] and r.loc[0, 'p_seat'] != r.loc[1, 'p_seat']

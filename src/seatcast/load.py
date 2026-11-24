@@ -137,7 +137,7 @@ def meta(g):
 def model(c, E):
     k = cfg()
     c['N'] = c['N'].fillna(0).astype(float)
-    run2, n = k['run_cv'] ** 2, k['min_cell_n']
+    run2, n = (c['run_cv'] if 'run_cv' in c else k['run_cv']) ** 2, k['min_cell_n']
     N = c['N_obs'].where(c['N'] > 0)
     top = k['censor_factor'] * c['total']
     c['censored'] = (c['N'] > 0) & (c['n'] >= n) & (E['central'] * c['calib'] * c['f'] / N > top)
@@ -170,6 +170,25 @@ def ratios(use):
         return None
     r = pd.read_csv(f, dtype={'route_id': str})[['route_id', 'daytype', 'band', 'ratio']]
     return r.assign(ratio=r['ratio'].clip(*cfg()['gps']['ratio_clamp']))
+
+
+def run_cvs(use):
+    # measured bus-to-bus variation (CV of GPS headways net of the timetable's own) per route, day type and hour band;
+    # fresh from `run bunching` if it ran, else the shipped aggregate. None = the config run_cv everywhere
+    f = next((x for x in (WORK / 'service_cv.csv', ROOT / 'config' / 'service_cv.csv') if x.exists()), None)
+    if not use or f is None:
+        return None
+    return pd.read_csv(f, dtype={'route_id': str})[['route_id', 'daytype', 'band', 'run_cv']]
+
+
+def attach_run_cv(c, r, h):
+    # run_cv of the cell's route, day type and band of hour column h; no row = the network median of the measured values
+    if r is None:
+        return c.assign(run_cv=cfg()['run_cv'])
+    b = np.array(cfg()['gps']['bands'][:-1])
+    c = c.assign(band=b[np.searchsorted(b, c[h].to_numpy(), 'right') - 1])
+    c = c.merge(r, on=['route_id', 'daytype', 'band'], how='left').drop(columns='band')
+    return c.assign(run_cv=c['run_cv'].fillna(r['run_cv'].median()))
 
 
 def observe(c, r, h):
@@ -335,7 +354,8 @@ def run(gps=None, cal=None, write=True):
     c = stats(con)
     c = c.merge(con.execute(SVW, win()).df(), on=['route_id', 's0', 's1', 'slot', 'daytype'], how='left')
     c['N'] = c['N'].fillna(0).astype(float)
-    c = observe(c.assign(hr=c['slot'] * k['slot_min'] // 60), r, 'hr').drop(columns='hr')
+    c = observe(c.assign(hr=c['slot'] * k['slot_min'] // 60), r, 'hr')
+    c = attach_run_cv(c, run_cvs(k['run_cv_from_gps']), 'hr').drop(columns='hr')
     c = c.merge(cap, on='route_id', how='left').merge(rho(con), on='route_id', how='left')
     Dr = con.sql(f"SELECT route_id, SUM(pax) / {nd['nd'].sum()} d FROM scale WHERE route_id IS NOT NULL "
                  'GROUP BY 1').df().set_index('route_id')['d']

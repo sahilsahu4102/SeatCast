@@ -5,10 +5,12 @@ import subprocess
 import time
 
 import duckdb
+import numpy as np
 import pandas as pd
 
 from seatcast import OUT, RAW, ROOT, WORK, cfg, gtfs
-from seatcast.load import LEVELS, level as cell_level
+from seatcast.load import LEVELS, level as cell_level, p_seat
+from seatcast.service import P3
 
 Z7 = r'C:\Program Files\7-Zip\7z.exe'
 ARC = RAW / 'gps' / 'delhi-dtc-bus-gtfs-rt-2026-10.7z'
@@ -17,7 +19,7 @@ IST_S = 19800
 # defaults for gps keys missing in config.yaml (reported to the owner of config)
 NEW = {'route_m': 200, 'route_sample': 0.01, 'route_min_share': 0.5, 'route_min_lift': 2.0, 'sched_min': 2,
        'top_routes': 50, 'stop_m': 150, 'pass_gap_s': 900, 'ref_fracs': [0.4, 0.7], 'ref_win': 0.15,
-       'pass_min_day': 5, 'km_dt': [1, 120], 'km_step': [10, 1000], 'alias_share': 0.7, 'alias_n': 20, 'alias_top': 30, 'board_m': [300, 500]}
+       'pass_min_day': 5, 'km_dt': [1, 120], 'km_step': [10, 1000], 'hw_max_s': 7200, 'hw_min_m': 4, 'cv_shrink': 30, 'alias_share': 0.7, 'alias_n': 20, 'alias_top': 30, 'board_m': [300, 500]}
 ALL = ('2026-10-01', '2026-10-31')   # archive span
 NAMED = ['badarpur', 'shakarpur', 'madangir', 'telephone exchange', 'bawana', 'sarai rohella', 'health center']
 
@@ -178,9 +180,9 @@ def bands_at(g, bs):
 
 def refstops(g, k):
     # per GTFS route, stops near ref_fracs of its canonical pattern, preferring one with departures in most bands
-    pt = pd.read_parquet(WORK / 'patterns.parquet')
+    pt = pd.read_parquet(P3 / 'patterns.parquet')
     pt = pt[pt['canonical']].drop_duplicates('route_id')[['pattern_id', 'route_id']]
-    ps = pd.read_parquet(WORK / 'pattern_stops.parquet').merge(pt, on='pattern_id')
+    ps = pd.read_parquet(P3 / 'pattern_stops.parquet').merge(pt, on='pattern_id')
     ps = ps.assign(route_id=ps['route_id'].astype(int), stop_id=ps['stop_id'].astype(str), f=ps['dist_m'] / ps.groupby('pattern_id')['dist_m'].transform('max'))
     nb = bands_at(g, k['bands']).assign(stop_id=lambda x: x['stop_id'].astype(str))
     ps = ps.merge(nb, on=['route_id', 'stop_id'], how='left').fillna({'nb': 0})
@@ -391,8 +393,8 @@ def boardings(con, days, gps, win):
     con.execute(f'''CREATE OR REPLACE TABLE tx AS SELECT t.tid, upper(trim(t.v)) v, ist_utc(t.ts) t, t.pc,
         o.route_id, o.rung_b, o.rung_a, sb.lat lb, sb.lon ob, sa.lat la, sa.lon oa
         FROM '{(WORK / 'tickets.parquet').as_posix()}' t JOIN '{(WORK / 'od.parquet').as_posix()}' o USING (tid)
-        JOIN '{(WORK / 'pattern_stops.parquet').as_posix()}' sb ON sb.pattern_id = o.pattern_id AND sb.k = o.b
-        JOIN '{(WORK / 'pattern_stops.parquet').as_posix()}' sa ON sa.pattern_id = o.pattern_id AND sa.k = o.a
+        JOIN '{(P3 / 'pattern_stops.parquet').as_posix()}' sb ON sb.pattern_id = o.pattern_id AND sb.k = o.b
+        JOIN '{(P3 / 'pattern_stops.parquet').as_posix()}' sa ON sa.pattern_id = o.pattern_id AND sa.k = o.a
         WHERE t.v IS NOT NULL AND t.v <> 'NULL' AND CAST(t.date AS DATE) IN (SELECT unnest({[str(d) for d in days]}::DATE[]))''')
     con.execute(f'CREATE OR REPLACE TABLE gx AS SELECT upper(trim(v)) v, lat, lon, route_id, t_utc t FROM {gps}')
     con.execute('CREATE OR REPLACE TABLE am AS ' + asof('tx', 'gx', win))
@@ -432,8 +434,8 @@ def alias_evidence(con, g, days, k, win, gps):
     sn = g['stops'][['stop_id', 'stop_name', 'stop_lat', 'stop_lon']].copy()
     from seatcast.clean import norm
     sn['gn'] = sn['stop_name'].map(norm)
-    ps = pd.read_parquet(WORK / 'pattern_stops.parquet')[['pattern_id', 'stop_id']]
-    pt = pd.read_parquet(WORK / 'patterns.parquet')[['pattern_id', 'route_id']]
+    ps = pd.read_parquet(P3 / 'pattern_stops.parquet')[['pattern_id', 'stop_id']]
+    pt = pd.read_parquet(P3 / 'patterns.parquet')[['pattern_id', 'route_id']]
     rs = ps.merge(pt, on='pattern_id')[['route_id', 'stop_id']].drop_duplicates()
     rs = rs.assign(route_id=rs['route_id'].astype(int), stop_id=rs['stop_id'].astype(str))
     sn['stop_id'] = sn['stop_id'].astype(str)
@@ -521,6 +523,81 @@ def gps():
     return r
 
 
+# ---------- bus-to-bus variation measured from GPS headways ----------
+
+def hw_cv(df, win, grp, min_m):
+    # unbiased headway CV^2 per window (day x stop x band), pooled over windows with m-1 weights
+    w = df.groupby(win)['hw'].agg(m='size', mu='mean', var='var').reset_index()
+    w = w[w['m'] >= min_m].assign(dof=lambda x: x['m'] - 1)
+    w['ss'] = w['var'] / w['mu'] ** 2 * w['dof']
+    p = w.groupby(grp, as_index=False).agg(dof=('dof', 'sum'), ss=('ss', 'sum'), windows=('m', 'size'))
+    return p.assign(cv=lambda x: np.sqrt(x['ss'] / x['dof'])).drop(columns='ss')
+
+
+def actual_hw(con, gps, refs, k, hol):
+    observed_passes(con, gps, refs, k)
+    df = con.sql(f'''SELECT route_id, stop_id, d, h, hw FROM (
+        SELECT route_id, stop_id, ist_day(t) d, ist_hour(t) h,
+          t - lag(t) OVER (PARTITION BY route_id, stop_id, ist_day(t) ORDER BY t) hw
+        FROM ({passq("near", k["pass_gap_s"])})) WHERE hw > 0 AND hw <= {k["hw_max_s"]}''').df()
+    d = pd.to_datetime(df['d'])
+    return df.assign(daytype=d.map(lambda x: daytype(x, hol)), band=df['h'].map(lambda h: band(h, k['bands'])))
+
+
+def sched_hw(con, g, refs, k):
+    cal = pd.DataFrame(g['calendar'])
+    ok = pd.DataFrame([(s, t) for t, d in cfg()['daytypes'].items() for s in gtfs.services({'calendar': cal}, d)],
+                      columns=['service_id', 'daytype'])
+    con.register('ok', ok)
+    con.register('tr2', g['trips'][['trip_id', 'route_id', 'service_id']].astype({'route_id': int}))
+    con.register('st2', g['stop_times'][['trip_id', 'stop_id', 'dep']].astype({'stop_id': str}))
+    con.register('refs2', refs[['route_id', 'stop_id']].astype({'stop_id': str}))
+    df = con.sql(f'''SELECT route_id, daytype, stop_id, CAST(dep // 3600 % 24 AS INT) h, hw FROM (
+        SELECT tr2.route_id, ok.daytype, st2.stop_id, st2.dep,
+          st2.dep - lag(st2.dep) OVER (PARTITION BY tr2.route_id, ok.daytype, st2.stop_id ORDER BY st2.dep) hw
+        FROM st2 JOIN tr2 USING (trip_id) JOIN ok USING (service_id)
+        JOIN refs2 ON refs2.route_id = tr2.route_id AND refs2.stop_id = st2.stop_id)
+        WHERE hw > 0 AND hw <= {k["hw_max_s"]}''').df()
+    return df.assign(band=df['h'].map(lambda h: band(h, k['bands'])))
+
+
+def run_cv_table(act, sch, k):
+    # the load of a bus is proportional to the gap since the bus before it, so the CV of headways is the CV of loads.
+    # Part of the observed irregularity is in the timetable itself; take it out in quadrature. Thin route-bands shrink to the network median.
+    a = hw_cv(act, ['route_id', 'stop_id', 'd', 'band', 'daytype'], ['route_id', 'daytype', 'band'], k['hw_min_m'])
+    t = hw_cv(sch, ['route_id', 'stop_id', 'daytype', 'band'], ['route_id', 'daytype', 'band'], k['hw_min_m'])
+    m = a.merge(t[['route_id', 'daytype', 'band', 'cv']].rename(columns={'cv': 'cv_sched'}), how='left', on=['route_id', 'daytype', 'band'])
+    m['cv_sched'] = m['cv_sched'].fillna(0.0)
+    m = m.rename(columns={'cv': 'cv_act'})
+    m['cv_run'] = np.sqrt((m['cv_act'] ** 2 - m['cv_sched'] ** 2).clip(lower=0))
+    med = float(np.median(m['cv_run']))
+    m['run_cv'] = (m['dof'] * m['cv_run'] + k['cv_shrink'] * med) / (m['dof'] + k['cv_shrink'])
+    m['route_id'] = m['route_id'].astype(str)
+    return m.round(4)
+
+
+def bunching():
+    # measured bus-to-bus variation per route, day type and hour band (replaces the assumed config run_cv)
+    t0, k = time.time(), G()
+    days, hol = alldays(), set(cfg()['holidays'])
+    con = db()
+    convert(con, days)
+    g = gtfs.load()
+    refs = refstops(g, k)
+    con.execute(f"CREATE OR REPLACE VIEW gva AS SELECT * FROM read_parquet({[(WORK / f'gps_{d}.parquet').as_posix() for d in days]})")
+    act = actual_hw(con, 'gva', refs, k, hol)
+    print('headways', len(act), round(time.time() - t0), 's', flush=True)
+    sch = sched_hw(con, g, refs, k)
+    m = run_cv_table(act, sch, k)
+    m.to_csv(WORK / 'service_cv.csv', index=False)
+    (ROOT / 'config').mkdir(exist_ok=True)
+    m.to_csv(ROOT / 'config' / 'service_cv.csv', index=False)
+    q = m['cv_run'].quantile([0.1, 0.25, 0.5, 0.75, 0.9]).round(3).tolist()
+    print(f'bunching: {len(m)} route-bands, {int(m["dof"].sum())} headway dof; cv_run quantiles {q}; '
+          f'assumed {cfg()["run_cv"]}; {round(time.time() - t0)} s')
+    return m
+
+
 def ensure_gps():
     # without the 16 GB archive, use the shipped GPS aggregates (built from the Oct 2026 feed; no vehicle data)
     f, shipped = OUT / 'gps_checks.json', ROOT / 'config' / 'gps_checks.json'
@@ -556,13 +633,13 @@ def table(rows, cols, fmt=None):
 def derived(cov, gps):
     t = pd.read_parquet(WORK / 'tickets.parquet', columns=['pc', 'fare_class', 'f_zero', 'v', 'date'])
     per_bus = t.dropna(subset=['v']).groupby(['v', 'date'])['pc'].sum().median()  # aggregate only; no ids leave here
-    c = pd.read_parquet(OUT / 'cells.parquet', columns=['cv', 'cv_trip', 'total', 'flag'])
+    c = pd.read_parquet(OUT / 'cells.parquet', columns=['cv', 'cv_trip', 'run_cv', 'total', 'flag'])
     c = c[c['flag'].isna()]
     L = cov['load']
     rung = gps['boarding']['by_rung_board']
     slab = cov['match']['fare_slab']['km_by_slab']
     return {
-        'per_bus_median': per_bus, 'cv_med': c['cv'].median(), 'cv_trip_med': c['cv_trip'].median(),
+        'per_bus_median': per_bus, 'cv_med': c['cv'].median(), 'cv_trip_med': c['cv_trip'].median(), 'run_cv_med': c['run_cv'].median(),
         'total_med': c['total'].median(),
         'censored_routes': ', '.join(f"{r['base']} {r['dir']}" for r in L['censored_routes_top'][:5]),
         'tickets': len(t), 'std_pct': 100 * t.loc[t['fare_class'] == 'std', 'pc'].sum() / t['pc'].sum(),
@@ -1013,6 +1090,7 @@ Delivered service (observed bus-km against scheduled), all days of October:
     merge_val('holdout', hold_key(h))
     S.append(sec_hold(h))
     S.append(sens(con))
+    S.append(sec_bunch(con))
     return '\n'.join(S)
 
 
@@ -1132,6 +1210,57 @@ Each scenario is compared with the published level; expansion scenarios use the 
 {table(rows, [('scenario', 'scenario'), ('group', 'group'), ('cells', 'cells'), ('same level', 'same'), ('within one level', 'within'), ('moves to/from crushed', 'crushed')], {'cells': ',', 'same': '.1%', 'within': '.1%', 'crushed': '.1%'})}
 
 By exact-level agreement across all published cells, the most robust scenario is {most['scenario']} ({most['same']:.1%}) and the least robust is {least['scenario']} ({least['same']:.1%}).
+'''
+
+
+def missed_pass_bias(true_cvs=(0.35, 0.5, 0.6), miss=(0, 0.05, 0.1, 0.15), reps=300, seed=3):
+    # simulated gamma headways with a given CV; each bus pass is missed with probability `miss` (a GPS dropout merges two gaps)
+    rng = np.random.default_rng(seed)
+    rows = []
+    for cv in true_cvs:
+        shape = 1 / cv ** 2
+        row = {'true': cv}
+        for q in miss:
+            v = []
+            for _ in range(reps):
+                t = np.cumsum(rng.gamma(shape, 600 / shape, 40))
+                h = np.diff(t[rng.random(len(t)) > q])
+                v.append(h.std(ddof=1) / h.mean())
+            row[f'm{int(q * 100)}'] = float(np.mean(v))
+        rows.append(row)
+    return rows
+
+
+def sec_bunch(con):
+    k = cfg()
+    f = next((x for x in (WORK / 'service_cv.csv', ROOT / 'config' / 'service_cv.csv') if x.exists()), None)
+    m = pd.read_csv(f)
+    assumed = k['run_cv']
+    g = m.groupby(['daytype', 'band'])
+    rows = [{'daytype': d, 'band': f'{int(b):02d}:00', 'n': len(x), 'sched': x['cv_sched'].median(), 'act': x['cv_act'].median(),
+             'run': x['cv_run'].median(), 'q1': x['cv_run'].quantile(0.25), 'q3': x['cv_run'].quantile(0.75)}
+            for (d, b), x in g]
+    x = sql(con, f'''SELECT L, seats, cv_day, scale, f, p_seat FROM {CELLS}
+        WHERE flag IS NULL AND level != 'NO_DATA_AVAILABLE' AND p_seat IS NOT NULL''')
+    old = p_seat(x['L'], x['seats'], np.sqrt((x['cv_day'] ** 2 - x['scale'] / x['f']).clip(lower=0) + assumed ** 2))
+    new = x['p_seat'].to_numpy()
+    k_old, k_new = np.round(old * 10), np.round(new * 10)
+    med = m['run_cv'].median()
+    sim = missed_pass_bias()
+    used = 'the variation measured from GPS headways' if k['run_cv_from_gps'] else 'the assumed value'
+    return f'''## 17. Bus-to-bus variation, measured from GPS headways
+
+The load of a bus is proportional to the gap since the bus before it (riders accumulate while they wait), so the variation of loads from bus to bus equals the variation of headways. For each route we found the buses passing two reference stops (GPS pings within {G()['stop_m']} m) on all {m['dof'].count():,} route-day-type-bands, took the gaps between consecutive buses, and computed their coefficient of variation (CV) per day, stop and hour band, pooled with degrees-of-freedom weights. The timetable has irregular gaps of its own, so its CV at the same stops is removed in quadrature; what remains is the unscheduled irregularity (bunching and delay). Route-bands with few headways shrink to the network median ({med:.2f}). Seat chances now use {used}; the former assumption was {assumed}.
+
+{table(rows, [('day type', 'daytype'), ('hour band', 'band'), ('route-bands', 'n'), ('timetable CV', 'sched'), ('observed CV', 'act'), ('unscheduled CV (median)', 'run'), ('25th pct', 'q1'), ('75th pct', 'q3')], {'n': ',', 'sched': '.2f', 'act': '.2f', 'run': '.2f', 'q1': '.2f', 'q3': '.2f'})}
+
+Effect on the published seat chances ({len(x):,} cells): the median P(seat) moves from {np.median(old):.2f} (assumed {assumed}) to {np.median(new):.2f}; the "seats on k of 10 trips" figure changes in {(k_old != k_new).mean():.1%} of cells, by one or fewer in {(abs(k_old - k_new) <= 1).mean():.1%}, and the mean absolute change in P(seat) is {np.mean(abs(old - new)):.3f}. Crowding levels do not change, because they come from the mean load, not its spread.
+
+One bias runs upward. A bus whose pass the GPS misses merges two gaps into one long one and inflates the CV. Simulated headways with a known CV, with a share of passes dropped:
+
+{table(sim, [('true CV', 'true'), ('no pass missed', 'm0'), ('5% missed', 'm5'), ('10% missed', 'm10'), ('15% missed', 'm15')], {'true': '.2f', 'm0': '.2f', 'm5': '.2f', 'm10': '.2f', 'm15': '.2f'})}
+
+Ticket matching found a GPS ping within 60 s for 87% of tickets (§11), so a few percent of passes may be missing and the measured median above probably overstates the true one by a few hundredths. We report this as a sensitivity and do not correct for it; either way the unscheduled variation is well above the {assumed} we had assumed.
 '''
 
 

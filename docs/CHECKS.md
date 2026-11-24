@@ -131,7 +131,7 @@ Days flagged (beyond the configured deviation from the same-weekday median): non
 
 ![Load factor distribution](img/lf_hist.png)
 
-Publishable cells: 2,312,455 of 4,411,005. Load factor p10 / p50 / p90 / p99 = 0.241 / 0.785 / 2.427 / 2.432.
+Publishable cells: 2,312,451 of 4,411,005. Load factor p10 / p50 / p90 / p99 = 0.241 / 0.785 / 2.427 / 2.432.
 Over seats: 40.19% of cells. Over total capacity: 22.94%. Censored at 1.5 x total capacity: 12.338% of cells (these show as the top load factor, which is the censor cap and explains the repeated top values below).
 
 Routes with most censored cells:
@@ -166,7 +166,7 @@ Ten most crowded route-hours by standee-minutes:
 
 ## 10. Where estimates are weakest
 
-- Low-n cells: 1,567,110 of 4,411,005 cells have fewer than 5 sampled passengers and are shown as limited data. Of the publishable cells, confidence is high 26.34%, medium 43.62%, low 30.04%.
+- Low-n cells: 1,567,114 of 4,411,005 cells have fewer than 5 sampled passengers and are shown as limited data. Of the publishable cells, confidence is high 26.34%, medium 43.62%, low 30.04%.
 - Schedule gaps: 531,440 cells carry passengers but no scheduled bus (2.62% of passengers).
 - Hours with the highest low-confidence share: 0:00 (54%), 4:00 (52%), 3:00 (50%).
 
@@ -193,24 +193,24 @@ Per hour of day, publishable cells:
 | 1 | 1,562 | 46% | 19.0 |
 | 2 | 1,341 | 48% | 18.1 |
 | 3 | 1,703 | 50% | 13.4 |
-| 4 | 5,451 | 52% | 16.0 |
+| 4 | 5,450 | 52% | 16.0 |
 | 5 | 33,300 | 41% | 22.8 |
 | 6 | 83,900 | 35% | 28.7 |
-| 7 | 136,634 | 30% | 40.5 |
+| 7 | 136,635 | 30% | 40.5 |
 | 8 | 184,646 | 24% | 62.2 |
-| 9 | 197,540 | 21% | 69.9 |
+| 9 | 197,539 | 21% | 69.9 |
 | 10 | 174,937 | 25% | 51.1 |
 | 11 | 143,194 | 31% | 33.8 |
 | 12 | 118,150 | 35% | 26.5 |
-| 13 | 100,357 | 37% | 23.3 |
-| 14 | 97,211 | 38% | 22.7 |
-| 15 | 103,891 | 37% | 24.7 |
+| 13 | 100,358 | 37% | 23.3 |
+| 14 | 97,212 | 38% | 22.7 |
+| 15 | 103,892 | 37% | 24.7 |
 | 16 | 121,198 | 34% | 28.7 |
 | 17 | 147,804 | 30% | 37.7 |
-| 18 | 164,966 | 27% | 49.0 |
-| 19 | 159,181 | 25% | 51.5 |
-| 20 | 140,123 | 28% | 44.0 |
-| 21 | 107,800 | 32% | 34.2 |
+| 18 | 164,965 | 27% | 49.0 |
+| 19 | 159,178 | 25% | 51.5 |
+| 20 | 140,122 | 28% | 44.0 |
+| 21 | 107,799 | 32% | 34.2 |
 | 22 | 63,963 | 37% | 25.6 |
 | 23 | 22,024 | 47% | 17.8 |
 
@@ -264,7 +264,7 @@ Published cells (flag none), weekday unless stated. Mean load per observed bus i
 | 1 | 909 | 31.6 | 33.0 | 16.7% |
 | 2 | 733 | 25.9 | 26.1 | 5.9% |
 | 3 | 913 | 22.1 | 22.1 | 2.6% |
-| 4 | 3,151 | 29.7 | 32.5 | 12.2% |
+| 4 | 3,150 | 29.7 | 32.5 | 12.2% |
 | 5 | 17,842 | 29.1 | 32.3 | 13.4% |
 | 6 | 42,508 | 29.6 | 32.9 | 14.5% |
 | 7 | 67,750 | 37.9 | 46.9 | 23.9% |
@@ -274,7 +274,7 @@ Published cells (flag none), weekday unless stated. Mean load per observed bus i
 | 11 | 69,068 | 33.2 | 37.4 | 16.2% |
 | 12 | 59,757 | 26.2 | 28.4 | 9.6% |
 | 13 | 51,674 | 25.2 | 27.1 | 8.6% |
-| 14 | 50,275 | 25.0 | 27.1 | 8.4% |
+| 14 | 50,276 | 25.0 | 27.1 | 8.4% |
 | 15 | 53,087 | 25.4 | 27.2 | 9.5% |
 | 16 | 61,029 | 27.9 | 30.6 | 12.0% |
 | 17 | 72,627 | 38.2 | 47.8 | 23.5% |
@@ -294,7 +294,7 @@ Crushed share by weekday cell flow quartile (f = digital passengers per day on t
 | 3 | 1.40 | 3.45 | 282,551 | 25.7% | 0.0% |
 | 4 | 3.45 | 122.25 | 282,551 | 63.0% | 0.0% |
 
-Of 2,312,455 published cells, 12.3% have raw load above 1.5 x total capacity and 7.3% above 2 x. 11.6% have fewer than one observed bus in the slot window (N_obs < 1). Censored cells: 12.3%; low confidence overall: 30.0%.
+Of 2,312,451 published cells, 12.3% have raw load above 1.5 x total capacity and 7.3% above 2 x. 11.6% have fewer than one observed bus in the slot window (N_obs < 1). Censored cells: 12.3%; low confidence overall: 30.0%.
 
 ## 14. Published-level stability
 
@@ -303,13 +303,13 @@ Level recomputed from week 1 and week 2 weekday flow (same N_obs, capacity and E
 | comparison | confidence | cells | same level | within one level |
 |---|---|---|---|---|
 | week 1 vs week 2 | all | 1,123,195 | 58.8% | 89.1% |
-| week 1 vs week 2 | low | 205,930 | 63.8% | 88.7% |
-| week 1 vs week 2 | medium | 496,452 | 51.9% | 84.4% |
+| week 1 vs week 2 | low | 205,927 | 63.8% | 88.7% |
+| week 1 vs week 2 | medium | 496,455 | 51.9% | 84.4% |
 | week 1 vs week 2 | high | 420,813 | 64.5% | 95.0% |
 | odd vs even days (ceiling) | all | 1,123,195 | 62.5% | 92.4% |
-| odd vs even days (ceiling) | medium | 496,452 | 56.7% | 89.5% |
+| odd vs even days (ceiling) | low | 205,927 | 65.8% | 90.7% |
 | odd vs even days (ceiling) | high | 420,813 | 67.8% | 96.6% |
-| odd vs even days (ceiling) | low | 205,930 | 65.8% | 90.7% |
+| odd vs even days (ceiling) | medium | 496,455 | 56.7% | 89.5% |
 
 Unstable routes: 794DOWN has rho 0.28 against the 0.7 threshold, so it is unstable (rank 3 by sampled passengers among the unstable routes).
 
@@ -319,15 +319,15 @@ The published level is rebuilt from the flow of weeks 1-3 only (21 days after dr
 
 | cells | n cells | same level | within one level | ceiling n cells | ceiling same | ceiling within one |
 |---|---|---|---|---|---|---|
-| all cells | 858,888 | 64.9% | 95.0% | 1,011,800 | 67.0% | 97.0% |
-| high-confidence cells | 516,849 | 71.1% | 97.9% | 589,280 | 69.6% | 97.3% |
+| all cells | 858,886 | 64.9% | 95.0% | 1,011,799 | 67.0% | 97.0% |
+| high-confidence cells | 516,850 | 71.1% | 97.9% | 589,281 | 69.6% | 97.3% |
 
-Crushed against not crushed (all cells, 858,888 cells):
+Crushed against not crushed (all cells, 858,886 cells):
 
 | predicted from weeks 1-3 / observed in week 4 | crushed | not crushed |
 |---|---|---|
 | crushed | 301,305 | 42,407 |
-| not crushed | 89,802 | 425,374 |
+| not crushed | 89,802 | 425,372 |
 
 ## 16. Sensitivity: how robust are the published levels
 
@@ -335,15 +335,49 @@ Each scenario is compared with the published level; expansion scenarios use the 
 
 | scenario | group | cells | same level | within one level | moves to/from crushed |
 |---|---|---|---|---|---|
-| Expansion low | All published | 2,312,455 | 62.7% | 100.0% | 9.6% |
-| Expansion low | High confidence | 609,099 | 57.5% | 100.0% | 16.5% |
-| Expansion high | All published | 2,312,455 | 96.7% | 100.0% | 1.0% |
-| Expansion high | High confidence | 609,099 | 96.7% | 100.0% | 1.5% |
-| Capacity -15% | All published | 2,312,455 | 82.1% | 100.0% | 5.4% |
-| Capacity -15% | High confidence | 609,099 | 82.7% | 100.0% | 8.0% |
-| Capacity +15% | All published | 2,312,455 | 84.9% | 100.0% | 4.1% |
-| Capacity +15% | High confidence | 609,099 | 84.0% | 100.0% | 6.7% |
-| Timetable buses | All published | 2,312,455 | 59.9% | 94.9% | 14.0% |
-| Timetable buses | High confidence | 609,099 | 47.8% | 93.3% | 27.4% |
+| Expansion low | All published | 2,312,451 | 62.7% | 100.0% | 9.6% |
+| Expansion low | High confidence | 609,100 | 57.5% | 100.0% | 16.5% |
+| Expansion high | All published | 2,312,451 | 96.7% | 100.0% | 1.0% |
+| Expansion high | High confidence | 609,100 | 96.7% | 100.0% | 1.5% |
+| Capacity -15% | All published | 2,312,451 | 82.1% | 100.0% | 5.4% |
+| Capacity -15% | High confidence | 609,100 | 82.7% | 100.0% | 8.0% |
+| Capacity +15% | All published | 2,312,451 | 84.9% | 100.0% | 4.1% |
+| Capacity +15% | High confidence | 609,100 | 84.0% | 100.0% | 6.7% |
+| Timetable buses | All published | 2,312,451 | 59.9% | 94.9% | 14.0% |
+| Timetable buses | High confidence | 609,100 | 47.8% | 93.3% | 27.4% |
 
 By exact-level agreement across all published cells, the most robust scenario is Expansion high (96.7%) and the least robust is Timetable buses (59.9%).
+
+## 17. Bus-to-bus variation, measured from GPS headways
+
+The load of a bus is proportional to the gap since the bus before it (riders accumulate while they wait), so the variation of loads from bus to bus equals the variation of headways. For each route we found the buses passing two reference stops (GPS pings within 150 m) on all 14,772 route-day-type-bands, took the gaps between consecutive buses, and computed their coefficient of variation (CV) per day, stop and hour band, pooled with degrees-of-freedom weights. The timetable has irregular gaps of its own, so its CV at the same stops is removed in quadrature; what remains is the unscheduled irregularity (bunching and delay). Route-bands with few headways shrink to the network median (0.62). Seat chances now use the variation measured from GPS headways; the former assumption was 0.35.
+
+| day type | hour band | route-bands | timetable CV | observed CV | unscheduled CV (median) | 25th pct | 75th pct |
+|---|---|---|---|---|---|---|---|
+| saturday | 00:00 | 400 | 0.46 | 0.80 | 0.62 | 0.42 | 0.77 |
+| saturday | 07:00 | 1,024 | 0.46 | 0.78 | 0.60 | 0.40 | 0.76 |
+| saturday | 10:00 | 1,438 | 0.58 | 0.79 | 0.53 | 0.22 | 0.71 |
+| saturday | 17:00 | 951 | 0.48 | 0.91 | 0.72 | 0.51 | 0.89 |
+| saturday | 20:00 | 954 | 0.50 | 0.88 | 0.69 | 0.49 | 0.85 |
+| sunday | 00:00 | 403 | 0.46 | 0.80 | 0.61 | 0.43 | 0.77 |
+| sunday | 07:00 | 1,021 | 0.46 | 0.77 | 0.58 | 0.40 | 0.73 |
+| sunday | 10:00 | 1,428 | 0.58 | 0.78 | 0.50 | 0.20 | 0.69 |
+| sunday | 17:00 | 989 | 0.49 | 0.88 | 0.68 | 0.49 | 0.85 |
+| sunday | 20:00 | 970 | 0.50 | 0.85 | 0.66 | 0.47 | 0.81 |
+| weekday | 00:00 | 457 | 0.44 | 0.80 | 0.61 | 0.44 | 0.78 |
+| weekday | 07:00 | 1,086 | 0.45 | 0.79 | 0.62 | 0.43 | 0.76 |
+| weekday | 10:00 | 1,522 | 0.57 | 0.80 | 0.54 | 0.31 | 0.72 |
+| weekday | 17:00 | 1,055 | 0.48 | 0.89 | 0.73 | 0.52 | 0.87 |
+| weekday | 20:00 | 1,074 | 0.48 | 0.88 | 0.69 | 0.51 | 0.84 |
+
+Effect on the published seat chances (2,312,451 cells): the median P(seat) moves from 0.78 (assumed 0.35) to 0.77; the "seats on k of 10 trips" figure changes in 43.6% of cells, by one or fewer in 88.9%, and the mean absolute change in P(seat) is 0.056. Crowding levels do not change, because they come from the mean load, not its spread.
+
+One bias runs upward. A bus whose pass the GPS misses merges two gaps into one long one and inflates the CV. Simulated headways with a known CV, with a share of passes dropped:
+
+| true CV | no pass missed | 5% missed | 10% missed | 15% missed |
+|---|---|---|---|---|
+| 0.35 | 0.35 | 0.40 | 0.44 | 0.48 |
+| 0.50 | 0.50 | 0.53 | 0.56 | 0.59 |
+| 0.60 | 0.60 | 0.62 | 0.64 | 0.65 |
+
+Ticket matching found a GPS ping within 60 s for 87% of tickets (§11), so a few percent of passes may be missing and the measured median above probably overstates the true one by a few hundredths. We report this as a sensitivity and do not correct for it; either way the unscheduled variation is well above the 0.35 we had assumed.

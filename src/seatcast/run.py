@@ -11,6 +11,7 @@ STEPS = {
     'checks': 'checks:run',
     'findings': 'findings:run',
     'gps': 'checks:gps',
+    'bunching': 'checks:bunching',
     'note': 'checks:note',
     'plan': 'plan:cli',
     'serve': 'api:serve',
