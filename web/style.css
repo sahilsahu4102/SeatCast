@@ -342,11 +342,33 @@ input[type="range"] { width: 100%; height: 44px; margin: 0; background: transpar
 
 /* Layout */
 @media (max-width: 699px) {
+  .skip { display: inline-flex; align-items: center; min-height: 44px; }
+  .lang button { min-height: 44px; }
+  .pref span { min-height: 44px; }
+  .rt { min-height: 44px; }
+  input[type="text"], input[type="time"], select, input[type="range"] { min-height: 44px; }
+  .maplibregl-ctrl-group button { width: 44px; height: 44px; }
+  .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button { width: 44px; height: 44px; }
+  .maplibregl-ctrl-attrib-inner a { display: inline-flex; align-items: center; min-height: 44px; }
   .band { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; padding-top: 8px; }
   .brand { grid-column: 1; grid-row: 1; }
   .lang { grid-column: 2; grid-row: 1; }
   .tabs { grid-column: 1 / -1; grid-row: 2; margin: 4px calc(-1 * var(--side)) 0; padding: 0 calc(var(--side) - 12px); overflow-x: auto; scrollbar-width: none; }
   .tab { padding: 0 12px; font-size: 15px; }
+  .tablewrap { overflow-x: visible; }
+  .optable, .optable tbody { display: block; width: 100%; }
+  .optable thead { display: block; }
+  .optable thead tr { display: flex; flex-wrap: wrap; gap: 4px; padding-bottom: 4px; }
+  .optable thead th { flex: 1 1 calc((100% - 8px) / 3); min-width: 0; border: 0; }
+  .optable thead th button { min-width: 0; min-height: 44px; padding: 6px; border: 1px solid var(--rule-2); text-align: center; overflow-wrap: anywhere; }
+  .optable thead th button .dir { display: block; margin: 2px 0 0; }
+  .optable tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+  .optable tbody th { grid-column: 1 / -1; min-width: 0; padding: 4px 0 8px; }
+  .optable tbody th .st { margin-top: 0; }
+  .optable tbody td { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; padding: 4px 0; border: 0; text-align: left; overflow-wrap: anywhere; }
+  .optable tbody td.n { white-space: normal; text-align: left; }
+  .optable tbody td::before { content: attr(data-label); color: var(--ink-3); font-size: 11.5px; font-weight: 650; text-align: left; }
+  .ptable .optable tbody td:first-child { grid-column: 1 / -1; }
   .when { grid-template-columns: 1fr 1fr; }
   .go { grid-column: 1 / -1; }
   .figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }

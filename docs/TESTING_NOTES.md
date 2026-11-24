@@ -31,3 +31,12 @@ By Sucharita Chattopadhyay. Manual testing of the SeatCast app before submission
 | 5 | The third option was sometimes the same bus a bit later, even when it was no better. | A later bus on the same route is added only if its seat chance is at least 0.2 higher. |
 | 6 | The demo started at the Anand Vihar ISBT terminus, where every bus starts empty, so the brief's example didn't show. | The default start is now the Anand Vihar main-road stop. |
 | 7 | The technical note had leftover template text at the top. | The note generator now removes it. |
+
+## Phone testing
+
+Playwright checks at 390×844 and 360×780 covered the planner, both languages, the Operators tab and the Data tab.
+
+| What I found | Fix |
+|---|---|
+| Operator ranking and stop-profile tables extended beyond the phone width and required sideways scrolling. | The mobile layout stacks each row into a labelled card and keeps the sortable ranking controls visible. Labels follow the selected language. |
+| Language buttons, the planner preference control, operator route buttons, and MapLibre zoom and attribution controls were smaller than 44px. | Their interactive targets now meet the 44px minimum. |

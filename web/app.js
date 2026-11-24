@@ -666,12 +666,12 @@
         '<th scope="row"><button type="button" class="rt" data-row="' + esc(rowKey(r)) + '" aria-pressed="' + on + '" lang="en">' + esc(routeLabel(r)) + '</button>' +
         '<span class="hh tnum">' + hr(r.hour) + '–' + hr(r.hour + 1) + '</span>' +
         '<span class="st"><span class="sr-only">' + esc(t('op.c.stretch')) + ': </span><span lang="en">' + esc(r.max_from) + ' → ' + esc(r.max_to) + '</span></span></th>' +
-        '<td class="n b">' + num(r.plus1_benefit) + '</td>' +
-        '<td class="n">' + num(r.standee_min) + '</td>' +
-        '<td class="n">' + buses1(r.F_obs) + ' → ' + buses1(r.F_req) + '</td>' +
-        '<td class="n">+' + buses1(r.gap_obs) + '</td>' +
-        '<td class="n">' + num(r.LF_max, 1) + '×' + (r.censored ? ' <span class="unc">' + esc(t('censored.short')) + '</span>' : '') + '</td>' +
-        '<td class="n">' + num(r.P_max) + '</td></tr>';
+        '<td class="n b" data-label="' + esc(t('op.c.plus1')) + '">' + num(r.plus1_benefit) + '</td>' +
+        '<td class="n" data-label="' + esc(t('op.c.standee')) + '">' + num(r.standee_min) + '</td>' +
+        '<td class="n" data-label="' + esc(t('op.c.buses')) + '">' + buses1(r.F_obs) + ' → ' + buses1(r.F_req) + '</td>' +
+        '<td class="n" data-label="' + esc(t('op.c.gap')) + '">+' + buses1(r.gap_obs) + '</td>' +
+        '<td class="n" data-label="' + esc(t('op.c.lf')) + '">' + num(r.LF_max, 1) + '×' + (r.censored ? ' <span class="unc">' + esc(t('censored.short')) + '</span>' : '') + '</td>' +
+        '<td class="n" data-label="' + esc(t('op.c.pax')) + '">' + num(r.P_max) + '</td></tr>';
     }).join('');
     el.innerHTML = '<div class="tablewrap" tabindex="0" role="region" aria-label="' + esc(t('op.top')) + '"><table class="optable"><thead><tr>' + th +
       '</tr></thead><tbody>' + tr + '</tbody></table></div>';
@@ -754,8 +754,8 @@
       '<defs><pattern id="unsure" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="' + css('--paper') + '" stroke-width="2"/></pattern><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="' + css('--crowd-0') + '"/><line x1="0" y1="0" x2="0" y2="5" stroke="' + css('--hatch') + '" stroke-width="2"/></pattern></defs>' +
       ticks + bars + seatLine + '<line class="base" x1="' + ml + '" x2="' + (W - mr) + '" y1="' + y(0) + '" y2="' + y(0) + '"/>' + xl + '</svg>';
     var rows = segs.map(function (g) {
-      return '<tr><td lang="en">' + esc(g.from) + ' → ' + esc(g.to) + '</td><td class="n">' + num(g.L) + '</td><td class="n">' + num(g.L_low) + '–' + num(g.L_high) +
-        '</td><td>' + esc(t('level.' + g.level)) + (unsure(g) ? ' ∙ ' + esc(t('censored.short')) : '') + '</td><td class="n">' + num(g.n) + '</td></tr>';
+      return '<tr><td data-label="' + esc(t('op.p.c.stretch')) + '" lang="en">' + esc(g.from) + ' → ' + esc(g.to) + '</td><td class="n" data-label="' + esc(t('op.p.c.load')) + '">' + num(g.L) + '</td><td class="n" data-label="' + esc(t('op.p.c.range')) + '">' + num(g.L_low) + '–' + num(g.L_high) +
+        '</td><td data-label="' + esc(t('op.p.c.level')) + '">' + esc(t('level.' + g.level)) + (unsure(g) ? ' ∙ ' + esc(t('censored.short')) : '') + '</td><td class="n" data-label="' + esc(t('op.p.c.n')) + '">' + num(g.n) + '</td></tr>';
     }).join('');
     var nUnsure = segs.filter(unsure).length;
     el.innerHTML = title + '<p class="hint">' + esc(t('op.p.desc')) + (nUnsure ? ' ' + esc(t('op.p.censored')) : '') + '</p><p class="peak">' + esc(peak) + '</p>' +
