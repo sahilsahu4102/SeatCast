@@ -14,13 +14,13 @@ We tested the ticket file before modelling it:
 - **99.32% of passengers paid exactly 90% of a standard fare slab, and none paid full fare.** That is Delhi's 10% discount on app tickets, so the file holds **ONDC app e-tickets only**, not conductor tickets, free Pink-pass riders or pass holders.
 - That is **88,826 digital passengers a day**, about **2.2%** of the 3.96 million daily DTC and cluster riders. There is a median of 6 identified digital passengers per bus per day.
 
-**Consequence:** counting passengers per bus trip is impossible. We pool a month of tickets into average flows per route stretch and time slot, divide by the buses that run, and expand to all riders, with the uncertainty carried through to what the user sees.
+**Consequence: we keep the brief's running count at the only level the data supports.** Expanding each ticket over the segments it rides and summing *is* the running count (boardings minus alightings, accumulated along the route). We accumulate it over every bus in a 30-minute slot across the month, then divide by the buses that GPS shows actually ran. Per individual bus the app sample is a median of 6 ticketed riders a day ([DAY0](DAY0.md)), so a per-trip count would be noise. GPS puts the bus a median 218 m from our matched boarding stop at ticket time, so the tickets are where we place them. The result is expanded to all riders, with the uncertainty carried through to what the user sees.
 
 ## 3. Approach
 
 1. **Match tickets to the network.** Route codes and messy stop names are matched to the official static GTFS: 6,862 stops, 2,574 routes, 80,357 trips. The matcher works through exact names, guarded fuzzy matching, and finally the same name found anywhere in the city and snapped to the route's nearest stop within 300 m.
    - Results by passengers: **98.35% route matched, 93.89% both stops, 99.78% in travel order.**
-   - Fares agree with the matched distances slab by slab, which is an independent check.
+   - Distances travelled rise monotonically with the fare slab paid, an independent check of the stop matching (the official slab km bounds could not be verified).
 2. **Pooled segment flows.** Each ticket rides the segments between its stops, timed by the schedule.
    - Half-matched tickets get their missing end from riders who boarded at the same stop and hour.
    - In total **97.6%** of digital passengers are represented.
@@ -40,7 +40,7 @@ The October bus GPS feed lets us check our two weakest assumptions independently
 - **The ticket file covers DTC and cluster buses.** 99.3% of ticket passengers' buses appear in the GPS feed, which covers cluster routes too, so we expand to DTC plus cluster ridership.
 - **Far fewer buses run than the timetable says.** GPS bus-km over all 31 days is **62%** of timetable bus-km on weekdays (63% Saturday, 66% Sunday), and a count of buses passing a stop agrees.
   - Counting GPS trip ids would have shown the opposite, because the feed splits journeys into fragments; we test for this.
-  - N uses the observed service. That gives about **639 riders per bus per day**, near DTC's reported ~756.
+  - N uses the observed service.
 - **Stop names the matcher can't settle.** Where a name fits two stops, the bus's position at purchase picks the right one.
 
 ## 5. Data used
