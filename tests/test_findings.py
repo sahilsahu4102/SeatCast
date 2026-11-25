@@ -1,6 +1,6 @@
 import pandas as pd
 
-from seatcast.findings import tms_profile, tms_story
+from seatcast.findings import standees, tms_profile, tms_story
 
 
 def toy():
@@ -21,3 +21,8 @@ def test_story_finds_peak_low_and_rise():
     st = tms_story(tms_profile(toy(), 10, {'slot_window': 1}))
     assert st['pk_name'] == 'AIIMS' and st['lo_name'] == 'Satya Niketan'
     assert st['hi'] == 70 and st['lo_r'] == 40
+
+
+def test_standees_with_near_zero_variation():
+    assert standees(20, 39, 1e-12) == 0
+    assert standees(45, 39, 1e-12) == 6

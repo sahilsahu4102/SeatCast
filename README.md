@@ -291,7 +291,7 @@ docs/                    proposal, technical note, checks, plan, thinking, phase
 | [docs/PROPOSAL.md](docs/PROPOSAL.md) ([PDF](docs/SeatCast_Proposal.pdf)) | The proposal |
 | [docs/TECH_NOTE.md](docs/TECH_NOTE.md) ([PDF](docs/SeatCast_Technical_Note.pdf)) | Method, assumptions, validation and limits; every number generated |
 | [docs/CHECKS.md](docs/CHECKS.md) | Validation report with charts |
-| [docs/FINDINGS.md](docs/FINDINGS.md) | Operator brief with five computed findings and charts |
+| [docs/FINDINGS.md](docs/FINDINGS.md) | Operator brief with six computed findings and charts |
 | [docs/DAY0.md](docs/DAY0.md) | What the ticket file actually contains |
 | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Step-by-step demo |
 | [docs/THINKING.md](docs/THINKING.md) | Decisions and the evidence behind them |

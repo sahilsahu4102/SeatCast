@@ -21,12 +21,12 @@ The highest +1-bus benefit is on OMS(+)UP at 18:00, where DDA Kalkaji Extension 
 
 ## Finding F2 — Weekday peak service shortfall
 
-Observed service falls short in 2,718 morning and 2,607 evening route-hours, with summed shortfalls of 4,903.6 and 3,876.2 bus-hours, respectively.
+Observed service falls short in 2,716 morning and 2,609 evening route-hours, with summed shortfalls of 4,904.0 and 3,876.4 bus-hours, respectively.
 
 | Peak | Summed shortfall (bus-hours) | Short route-hours |
 |---|---:|---:|
-| Morning | 4,903.6 | 2,718 |
-| Evening | 3,876.2 | 2,607 |
+| Morning | 4,904.0 | 2,716 |
+| Evening | 3,876.4 | 2,609 |
 
 ## Finding F3 — Busiest passenger stretches
 
@@ -57,7 +57,7 @@ The highest weekday hourly crowded share is 62.3% at 09:00 (55,338 of 88,824 pub
 | 01:00 | 909 | 268 | 29.5% |
 | 02:00 | 733 | 153 | 20.9% |
 | 03:00 | 913 | 145 | 15.9% |
-| 04:00 | 3,151 | 890 | 28.2% |
+| 04:00 | 3,150 | 890 | 28.3% |
 | 05:00 | 17,842 | 4,763 | 26.7% |
 | 06:00 | 42,508 | 11,661 | 27.4% |
 | 07:00 | 67,750 | 26,821 | 39.6% |
@@ -67,7 +67,7 @@ The highest weekday hourly crowded share is 62.3% at 09:00 (55,338 of 88,824 pub
 | 11:00 | 69,068 | 22,662 | 32.8% |
 | 12:00 | 59,757 | 12,858 | 21.5% |
 | 13:00 | 51,674 | 10,288 | 19.9% |
-| 14:00 | 50,275 | 10,086 | 20.1% |
+| 14:00 | 50,276 | 10,086 | 20.1% |
 | 15:00 | 53,087 | 10,987 | 20.7% |
 | 16:00 | 61,029 | 15,021 | 24.6% |
 | 17:00 | 72,627 | 28,957 | 39.9% |
@@ -96,6 +96,26 @@ Among routes with at least 20 published peak cells, 610SPL DOWN had the highest 
 | 717E | DOWN | 204 | 197 | 96.6% |
 
 Caveat: sizes at the peak carry the uncertainty described in TECH_NOTE §8; the ranking is the robust part.
+
+
+## Finding F6 — What bunching costs
+
+At most 4,399,747 standee-minutes per weekday, 13.8% of all standing, comes from irregular gaps between buses.
+
+| Route | Hour | Bunching cost (standee-minutes) | Equivalent extra buses per half-hour |
+|---|---:|---:|---:|
+| 165A DOWN | 09:00 | 6,347.5 | 4 |
+| 764 DOWN | 21:00 | 6,098.8 | 3 |
+| 764 DOWN | 20:00 | 5,697.6 | 2 |
+| 539 DOWN | 17:00 | 5,066.7 | 3 |
+| 159 DOWN | 08:00 | 5,045.1 | 5 |
+| 764 DOWN | 09:00 | 5,008.1 | 1 |
+| 578 UP | 12:00 | 4,387.0 | 4 |
+| 448 UP | 10:00 | 4,268.1 | 3 |
+| 578 DOWN | 20:00 | 4,164.8 | 2 |
+| 539 UP | 11:00 | 4,137.0 | 2 |
+
+Caveat: these are upper bounds. The bus-to-bus variation used is the measured variation of GPS headways, which tickets show overstates the gap-driven variation of loads (`docs/CHECKS.md` §17–18); magnitudes at the peak also carry the TECH_NOTE §8 uncertainty.
 
 ## Outside check
 

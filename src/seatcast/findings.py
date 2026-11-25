@@ -1,22 +1,53 @@
 import json
+import math
 import time
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from matplotlib.ticker import FuncFormatter
 
 from seatcast import OUT, ROOT, cfg
+
+try:
+    from scipy.special import ndtr
+except ImportError:
+    ndtr = None
 
 IMG = ROOT / 'docs' / 'img'
 INK, GRID = '#222222', '#dddddd'
 BLUE = '#2a78d6'
 LEVELS = ['STANDING_ROOM_ONLY', 'CRUSHED_STANDING_ROOM_ONLY']
 OP_COLS = ['route', 'hour', 'plus1_benefit', 'max_from', 'max_to', 'F_obs', 'F_req', 'gap_obs']
-CELL_COLS = ['base', 'dir', 'k', 'from_name', 'to_name', 'slot', 'daytype', 'f', 'flag', 'level']
+CELL_COLS = ['base', 'dir', 'k', 'from_name', 'to_name', 'slot', 'daytype', 'f',
+             'scale', 'cv_day', 'N_obs', 'seats', 'L', 'seg_min', 'cv_trip', 'flag', 'level']
 TMS = ('TMS(+)', 'UP')
 TMS_MARKS = ['Maharani Bagh', 'Lajpat Nagar', 'AIIMS', 'Satya Niketan', 'Dhaula Kuan', 'COD Ring']  # stops named or implied by the Down To Earth article
+
+
+def cdf(x):
+    if ndtr is not None:
+        return ndtr(x)
+    return 0.5 + 0.5 * np.fromiter(
+        (math.erf(float(v) / math.sqrt(2)) for v in np.ravel(x)),
+        dtype=float, count=np.size(x)).reshape(np.shape(x))
+
+
+def standees(m, seats, cv):
+    m, seats, cv = np.broadcast_arrays(np.asarray(m, dtype=float), np.asarray(seats, dtype=float),
+                                       np.asarray(cv, dtype=float))
+    s2 = np.log1p(cv * cv)
+    s = np.sqrt(s2)
+    fixed = s2 <= np.finfo(float).eps
+    safe_s = np.where(fixed, 1, s)
+    safe_m = np.maximum(m, np.finfo(float).tiny)
+    d1 = (np.log(safe_m / seats) + s2 / 2) / safe_s
+    d2 = d1 - s
+    v = np.maximum(m * cdf(d1) - seats * cdf(d2), 0)
+    out = np.where(fixed, np.maximum(m - seats, 0), v)
+    return float(out) if out.ndim == 0 else out
 
 
 def axes(title, xl, yl):
@@ -87,6 +118,49 @@ def tables(op, cells, e, k):
     return f1, f2, f3, f4, f5
 
 
+def bunching(cells, k):
+    x = cells[(cells['daytype'] == 'weekday') & cells['flag'].isna() & cells['L'].gt(0)].copy()
+    if x.empty:
+        raise ValueError('no published weekday cells with positive loads')
+    x['hour'] = x['slot'] // (60 // k['slot_min'])
+    x['buses'] = x['N_obs'] / (2 * k['slot_window'] + 1)
+    cv_reg = (x['cv_day'] ** 2 - x['scale'] / x['f']).clip(lower=0) ** 0.5
+    x['now'] = (x['buses'] * standees(x['L'].to_numpy(), x['seats'].to_numpy(),
+                                      x['cv_trip'].to_numpy()) * x['seg_min'])
+    x['regular'] = (x['buses'] * standees(x['L'].to_numpy(), x['seats'].to_numpy(),
+                                          cv_reg.to_numpy()) * x['seg_min'])
+    x['bunching'] = x['now'] - x['regular']
+    by_hour = (x.groupby(['base', 'dir', 'hour'], as_index=False)
+               .agg(bunching=('bunching', 'sum'), regular=('regular', 'sum')))
+    top = by_hour.nlargest(k['findings']['top_n'], 'bunching').copy()
+    max_extra = k['findings']['extra_bus_max']
+    for i, r in top.iterrows():
+        g = x[(x['base'] == r['base']) & (x['dir'] == r['dir']) & (x['hour'] == r['hour'])]
+        buses = g['buses'].to_numpy()
+        load = g['L'].to_numpy()
+        seats = g['seats'].to_numpy()
+        cv = g['cv_trip'].to_numpy()
+        mins = g['seg_min'].to_numpy()
+        extra_buses = f'>{max_extra}'
+        for extra in range(max_extra + 1):
+            if extra == 0:
+                total = g['now'].sum()
+            else:
+                n = buses + extra
+                load_new = load * buses / n
+                total = (n * standees(load_new, seats, cv) * mins).sum()
+            if total <= r['regular']:
+                extra_buses = str(extra)
+                break
+        top.loc[i, 'extra_buses'] = extra_buses
+    return {
+        'now': x['now'].sum(),
+        'bunching': x['bunching'].sum(),
+        'share': x['bunching'].sum() / x['now'].sum(),
+        'top': top.reset_index(drop=True),
+    }
+
+
 def tms_profile(cells, e, k):
     # weekday riders/day on each stretch of the TMS ring route, in route order (f pools 2w+1 slots; undo it)
     x = cells[(cells['base'] == TMS[0]) & (cells['dir'] == TMS[1]) & (cells['daytype'] == 'weekday')]
@@ -137,7 +211,7 @@ def fmt(value, digits=0):
     return f'{value:,.{digits}f}'
 
 
-def report(f1, f2, f3, f4, f5, prof, e, k):
+def report(f1, f2, f3, f4, f5, f6, prof, e, k):
     am, pm = f2
     best = f1.iloc[0]
     busiest = f3.iloc[0]
@@ -194,6 +268,16 @@ def report(f1, f2, f3, f4, f5, prof, e, k):
     for r in f5.itertuples():
         s.append(f'| {r.base} | {r.dir} | {fmt(r.cells)} | {fmt(r.crushed)} | {r.share:.1%} |')
     s += ['', 'Caveat: sizes at the peak carry the uncertainty described in TECH_NOTE §8; the ranking is the robust part.', '']
+    s += ['', '## Finding F6 — What bunching costs', '',
+          (f"At most {fmt(f6['bunching'])} standee-minutes per weekday, "
+           f"{f6['share']:.1%} of all standing, comes from irregular gaps between buses."), '',
+          '| Route | Hour | Bunching cost (standee-minutes) | Equivalent extra buses per half-hour |',
+          '|---|---:|---:|---:|']
+    for r in f6['top'].itertuples():
+        s.append(f'| {r.base} {r.dir} | {int(r.hour):02d}:00 | {fmt(r.bunching, 1)} | {r.extra_buses} |')
+    s += ['', ('Caveat: these are upper bounds. The bus-to-bus variation used is the measured variation of GPS headways, which '
+               'tickets show overstates the gap-driven variation of loads (`docs/CHECKS.md` §17–18); magnitudes at the peak also '
+               'carry the TECH_NOTE §8 uncertainty.'), '']
     st = tms_story(prof)
     s += ['## Outside check', '',
           ('The one public source we found with a route-level passenger pattern is a Down To Earth report on a DTC '
@@ -231,10 +315,11 @@ def run():
     cov = json.loads((OUT / 'coverage.json').read_text(encoding='utf-8'))
     e = cov['load']['E']['central']
     f1, f2, f3, f4, f5 = tables(op, cells, e, k)
+    f6 = bunching(cells, k)
     prof = tms_profile(cells, e, k)
     chart_hourly(f4)
     chart_plus1(f1)
-    md = report(f1, f2, f3, f4, f5, prof, e, k)
+    md = report(f1, f2, f3, f4, f5, f6, prof, e, k)
     p = ROOT / 'docs' / 'FINDINGS.md'
     p.write_text(md, encoding='utf-8')
     print(f'findings: {p.relative_to(ROOT)} written ({time.time() - t0:.1f}s)')
