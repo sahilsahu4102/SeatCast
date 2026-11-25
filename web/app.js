@@ -795,6 +795,8 @@
     var b = g.boarding || {}, bd = b.board || {}, al = b.alight || {}, dw = ((g.delivery_all_days || {}).weekday) || {};
     var rpb = deep(g, 'riders_per_bus_per_day_central');
     var share = L.level_share_pct || {}, conf = L.confidence_share_pct || {}, fl = L.cells_by_flag || {}, pk = L.weekday_flow_by_hour_peak || {};
+    var validation = c.validation || {}, holdout = validation.holdout || {}, sensitivity = validation.sensitivity || {};
+    var bunching = validation.bunching || {}, ticketHeadway = validation.ticket_headway || {};
     function sec(h, body) { return '<section class="dsec"><h2 class="title2">' + esc(t(h)) + '</h2>' + body + '</section>'; }
     function p(x) { return '<p>' + esc(x) + '</p>'; }
     function fig(label, v) { return '<div><dt>' + esc(t(label)) + '</dt><dd class="tnum">' + v + '</dd></div>'; }
@@ -816,6 +818,33 @@
         p(t('data.gps_within', {p: pct(100 * bd.within_300m, 0)})) +
         (dw.total_ratio != null ? p(t('data.delivery', {r: pct(100 * dw.total_ratio, 0)}) + ((L.service || {}).from_gps ? ' ' + t('data.from_gps') : '')) : '') +
         (rpb != null ? p(t('data.rpb', {n: num(rpb)})) : '')) +
+      (function () {
+        var tiles = [];
+        if (holdout.within_one != null && holdout.ceiling_within != null) {
+          tiles.push(fig('data.f.forecast', pct(100 * holdout.within_one) + '%'));
+        }
+        if (bunching.median != null && bunching.assumed != null && ticketHeadway.slope != null) {
+          tiles.push(fig('data.f.bunch', num(bunching.median, 2)));
+        }
+        if (sensitivity.timetable && sensitivity.timetable.changed != null) {
+          tiles.push(fig('data.f.timetable', pct(100 * sensitivity.timetable.changed, 0) + '%'));
+        }
+        if (!tiles.length) return '';
+        var lines = [];
+        if (holdout.within_one != null && holdout.ceiling_within != null) {
+          lines.push(p(t('data.forecast', {ceiling: pct(100 * holdout.ceiling_within)})));
+        }
+        if (bunching.median != null && bunching.assumed != null && ticketHeadway.slope != null) {
+          lines.push(p(t('data.bunch', {slope: num(ticketHeadway.slope, 2), assumed: num(bunching.assumed, 2)})));
+        }
+        if (sensitivity.timetable && sensitivity.timetable.changed != null) {
+          lines.push(p(t('data.timetable', {p: pct(100 * sensitivity.timetable.changed, 0)})));
+        }
+        if (sensitivity.cap_minus && sensitivity.cap_minus.changed != null && sensitivity.cap_plus && sensitivity.cap_plus.changed != null) {
+          lines.push(p(t('data.capacity', {minus: pct(100 * sensitivity.cap_minus.changed, 0), plus: pct(100 * sensitivity.cap_plus.changed, 0)})));
+        }
+        return sec('data.further_h', '<dl class="figs checks">' + tiles.join('') + '</dl>' + lines.join(''));
+      })() +
       sec('data.out_h', '<p class="cap">' + esc(t('data.levels')) + '</p>' + bar +
         p(t('data.over', {s: pct(L.over_seats_pct), t: pct(L.over_total_pct)})) +
         p(t('data.conf', {h: pct(conf.high), m: pct(conf.medium), l: pct(conf.low)})) +

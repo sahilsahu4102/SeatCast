@@ -326,6 +326,7 @@ input[type="range"] { width: 100%; height: 44px; margin: 0; background: transpar
 .method li { margin: 0 0 6px; color: var(--ink); }
 .figs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 4px 0 12px; }
 .figs.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.figs.checks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .figs div { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--rule); }
 .figs div + div { padding-left: 10px; border-left: 1px solid var(--rule); }
 .figs dt { font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.06em; font-variation-settings: "wdth" 80; color: var(--ink-3); line-height: 1.25; min-height: 2.5em; }
@@ -372,6 +373,7 @@ input[type="range"] { width: 100%; height: 44px; margin: 0; background: transpar
   .when { grid-template-columns: 1fr 1fr; }
   .go { grid-column: 1 / -1; }
   .figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .figs.checks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .legend { font-size: 11px; padding: 4px 6px; gap: 2px 8px; }  /* phone map is short: keep the key small */
   .legend b { display: none; }
   .legend i { width: 12px; height: 6px; }

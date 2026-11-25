@@ -217,3 +217,13 @@ def test_holdout_keys():
     for d in (h, h['high']):
         assert {'same_level', 'within_one', 'ceiling_same', 'ceiling_within', 'n_cells'} <= d.keys()
         assert 0 <= d['same_level'] <= d['within_one'] <= 1 and d['n_cells'] > 0
+
+
+@need(COV)
+def test_bunching_keys():
+    b = json.loads(COV.read_text(encoding='utf-8')).get('validation', {}).get('bunching')
+    if b is None:
+        pytest.skip('run checks first')
+    assert {'median', 'p10', 'p90', 'assumed', 'k_changed'} <= b.keys()
+    assert 0 <= b['p10'] <= b['median'] <= b['p90']
+    assert b['assumed'] >= 0 and 0 <= b['k_changed'] <= 1

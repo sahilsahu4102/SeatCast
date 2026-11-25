@@ -1332,6 +1332,13 @@ def sec_bunch(con):
     new = x['p_seat'].to_numpy()
     k_old, k_new = np.round(old * 10), np.round(new * 10)
     med = m['run_cv'].median()
+    merge_val('bunching', {
+        'median': float(med),
+        'p10': float(m['run_cv'].quantile(0.10)),
+        'p90': float(m['run_cv'].quantile(0.90)),
+        'assumed': float(assumed),
+        'k_changed': float((k_old != k_new).mean()),
+    })
     sim = missed_pass_bias()
     used = 'the variation measured from GPS headways' if k['run_cv_from_gps'] else 'the assumed value'
     return f'''## 17. Bus-to-bus variation, measured from GPS headways
