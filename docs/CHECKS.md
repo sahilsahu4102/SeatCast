@@ -303,13 +303,13 @@ Level recomputed from week 1 and week 2 weekday flow (same N_obs, capacity and E
 | comparison | confidence | cells | same level | within one level |
 |---|---|---|---|---|
 | week 1 vs week 2 | all | 1,123,195 | 58.8% | 89.1% |
-| week 1 vs week 2 | low | 205,927 | 63.8% | 88.7% |
 | week 1 vs week 2 | medium | 496,455 | 51.9% | 84.4% |
 | week 1 vs week 2 | high | 420,813 | 64.5% | 95.0% |
+| week 1 vs week 2 | low | 205,927 | 63.8% | 88.7% |
 | odd vs even days (ceiling) | all | 1,123,195 | 62.5% | 92.4% |
 | odd vs even days (ceiling) | low | 205,927 | 65.8% | 90.7% |
-| odd vs even days (ceiling) | high | 420,813 | 67.8% | 96.6% |
 | odd vs even days (ceiling) | medium | 496,455 | 56.7% | 89.5% |
+| odd vs even days (ceiling) | high | 420,813 | 67.8% | 96.6% |
 
 Unstable routes: 794DOWN has rho 0.28 against the 0.7 threshold, so it is unstable (rank 3 by sampled passengers among the unstable routes).
 

@@ -634,12 +634,14 @@ def derived(cov, gps):
     t = pd.read_parquet(WORK / 'tickets.parquet', columns=['pc', 'fare_class', 'f_zero', 'v', 'date'])
     per_bus = t.dropna(subset=['v']).groupby(['v', 'date'])['pc'].sum().median()  # aggregate only; no ids leave here
     c = pd.read_parquet(OUT / 'cells.parquet', columns=['cv', 'cv_trip', 'run_cv', 'total', 'flag'])
+    cv = pd.read_csv(next(x for x in (WORK / 'service_cv.csv', ROOT / 'config' / 'service_cv.csv') if x.exists()))
     c = c[c['flag'].isna()]
     L = cov['load']
     rung = gps['boarding']['by_rung_board']
     slab = cov['match']['fare_slab']['km_by_slab']
     return {
-        'per_bus_median': per_bus, 'cv_med': c['cv'].median(), 'cv_trip_med': c['cv_trip'].median(), 'run_cv_med': c['run_cv'].median(),
+        'per_bus_median': per_bus, 'cv_med': c['cv'].median(), 'cv_trip_med': c['cv_trip'].median(), 'run_cv_med': c['run_cv'].median(), 'run_cv_p10': c['run_cv'].quantile(0.1), 'run_cv_p90': c['run_cv'].quantile(0.9),
+        'hw_bands': len(cv), 'hw_dof': cv['dof'].sum(),
         'total_med': c['total'].median(),
         'censored_routes': ', '.join(f"{r['base']} {r['dir']}" for r in L['censored_routes_top'][:5]),
         'tickets': len(t), 'std_pct': 100 * t.loc[t['fare_class'] == 'std', 'pc'].sum() / t['pc'].sum(),
@@ -1089,7 +1091,9 @@ Delivered service (observed bus-km against scheduled), all days of October:
     h = holdout(con, L['E']['central'])
     merge_val('holdout', hold_key(h))
     S.append(sec_hold(h))
-    S.append(sens(con))
+    sk, md = sens(con)
+    merge_val('sensitivity', sk)
+    S.append(md)
     S.append(sec_bunch(con))
     return '\n'.join(S)
 
@@ -1201,9 +1205,12 @@ def sens(con):
                          'crushed': crushed})
 
     all_rows = [r for r in rows if r['group'] == 'All published']
+    ids = ['exp_low', 'exp_high', 'cap_minus', 'cap_plus', 'timetable']
+    key = {i: {'same': r['same'], 'changed': 1 - r['same'], 'within': r['within'], 'crushed': r['crushed'], 'cells': int(r['cells'])}
+           for i, r in zip(ids, all_rows)}
     most = max(all_rows, key=lambda r: r['same'])
     least = min(all_rows, key=lambda r: r['same'])
-    return f'''## 16. Sensitivity: how robust are the published levels
+    return key, f'''## 16. Sensitivity: how robust are the published levels
 
 Each scenario is compared with the published level; expansion scenarios use the existing low/high levels, while capacity scenarios recompute with both seats and total capacity changed by the configured ±{cap:.0%}. The timetable scenario uses L × N_obs / N_sched and excludes cells with N_sched ≤ 0. “Moves to/from crushed” is the share that changes between crushed and not crushed. High confidence uses the existing confidence labels.
 

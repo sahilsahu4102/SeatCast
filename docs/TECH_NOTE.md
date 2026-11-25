@@ -12,6 +12,7 @@ Commuters choose buses by time, but in Delhi whether you get a seat matters as m
   - 99.32% of passengers paid exactly 90% of a standard fare slab, Delhi's 10% discount for app tickets [R1][R7]. Only 8 tickets have zero fare.
   - So the file is **ONDC app e-tickets only**. Conductor tickets, free Pink-pass riders [R5] (women are 33–42% of bus riders [R6]) and pass holders are absent.
 - **Coverage.** The file averages 88,826 digital passengers a day, **2.2%** of the 3,960,000 daily DTC and cluster riders [R3][R4]. Counting passengers per individual trip is therefore impossible, so we pool.
+- **Who the file covers.** The organisers confirmed on 23 Nov 2026 that the ticket file covers both DTC and cluster (DIMTS) buses, so the expansion uses DTC plus cluster ridership.
 - **Network.** We use the official static GTFS from the Delhi Transport Stack. Its route short names carry the direction (e.g. 102ADOWN), so the full ticket route code matches it exactly first.
 - **Ground truth.** The October 2026 bus GPS feed (31 days) [R19] is used only for validation and for counting delivered service.
 
@@ -40,6 +41,7 @@ Commuters choose buses by time, but in Delhi whether you get a seat matters as m
 
 - **Variation.** cv² = 1/n (sampling) + cv_day² (day-to-day) + run_cv² (bus-to-bus variation, measured from GPS headways: median 0.62, see `docs/CHECKS.md` §17). This full cv sets the range and the confidence badge.
 - **Seat probability.** The load on a given bus is treated as lognormal with mean L and the **trip-to-trip** variation only: cv_trip² = max(cv_day² − sampling part, 0) + run_cv². Sampling noise says how sure we are of the average, not how much one bus differs from the next, so it is left out (median cv 1.06 → cv_trip 0.75). **P(seat) = P(load < seats)**; once a rider gets a seat, they keep it for the rest of the leg.
+- **Bus-to-bus variation is measured, not assumed.** The load of a bus follows the gap since the bus before it, so the spread of loads equals the spread of GPS headways. For 14,772 route, day-type and hour-band combinations (1,930,286 headway degrees of freedom over 31 days) we took the coefficient of variation of the gaps between buses at two reference stops per route and removed the timetable's own irregularity in quadrature. The median is **0.62** (10th–90th percentile 0.30–0.87), against the 0.35 we first assumed; thin route-bands shrink to the network median. It changes seat chances, not crowding levels, which depend only on mean load. Missed GPS passes bias it slightly upward (simulation in `docs/CHECKS.md` §17).
 - **Levels.** Load factor maps to GTFS-Realtime occupancy levels [R13]: many seats < 0.5 of seats, few seats < 1.0, standing < total capacity, crushed above that.
 - **Confidence.**
   - High needs n ≥ 30 and week-to-week Spearman ρ ≥ 0.7; medium needs n ≥ 10.
@@ -81,6 +83,8 @@ The rules are: a exact name, b reviewed or GPS-evidenced alias, c guarded fuzzy 
 | True | 22.5 | 231,879 | 12.5 | 17.8 | 29.3 |
 
 - **Hold-out forecast.** Levels built from weeks 1–3 alone predict week 4 within one level on **95.0%** of 858,886 cells (same level 64.9%), against 97.0% / 67.0% for two halves of the same weeks; high-confidence cells reach 97.9%, at the noise ceiling (`docs/CHECKS.md` §15). A GPS dwell-time check (stop dwell against predicted activity per bus) was too weak to use: pings every ~11 s are too coarse.
+- **Sensitivity** (`docs/CHECKS.md` §16). Changing an unverified input moves levels by at most one step: bus capacity −15% / +15% changes 18% / 15% of published levels, the low expansion factor 37%, the high one 3%. Using timetabled instead of GPS-observed buses would change 40% of levels (95% within one step), so the GPS correction is not cosmetic.
+- **Outside check on a published route.** A [Down To Earth report](https://www.downtoearth.org.in/energy/dtc-pilots-one-bus-route-design-to-demonstrate-improved-services-and-passengers) on a DTC experiment on the TMS ring route describes an on-bus passenger count: high boarding at Maharani Bagh and Lajpat Nagar, a drop at AIIMS and a rise after Dhaula Kuan. SeatCast's weekday flow on TMS(+) UP has the same shape; the published drop is larger, and the two measure different things (`docs/FINDINGS.md`, Outside check).
 - **Known patterns** (details in `docs/CHECKS.md`).
   - On-board load (segment flows) peaks on weekdays at 9:00 and 19:00, with the low at 14:00. Boardings by hour are in `docs/CHECKS.md` §3.
   - Weekday loads exceed Sunday loads on 75.6% of shared cells.
@@ -116,6 +120,7 @@ Over-capacity loads are concentrated in the peaks across many routes. App users 
 ## 7. Operator use
 
 For each route-hour:
+
 - the maximum-load segment;
 - the frequency needed at a 0.8 design load factor (maximum-load-point method [R11]), against the observed frequency;
 - standee-minutes;
@@ -129,16 +134,17 @@ The operator tab ranks the top 20 route-hours and maps load factor by segment an
 - **Stability.** Week 1 and week 2 give the same published level on 58.8% of cells and within one level on 89.1%, against 62.5% and 92.4% for two interleaved halves of the same days. Most week-to-week difference is sampling noise, not drift (`docs/CHECKS.md` §14).
 - **Fractional buses.** 11.6% of cells see fewer than one observed bus per slot window on average; their loads are averages over days with and without a bus.
 - **Missing riders.** Free (Pink pass) and pass riders are missing; expansion assumes they travel like app riders.
-- **Service.** Delivery ratios are by route, day type and hour band, not per trip; bunching is modelled only as variance. 2.62% of passengers fall in cells where the timetable has no bus (flagged as gaps).
+- **Service.** Delivery ratios are by route, day type and hour band, not per trip; bus-to-bus variation (bunching) is measured from GPS headways and enters as variance; loads are not tracked bus by bus. 2.62% of passengers fall in cells where the timetable has no bus (flagged as gaps).
 - **Capacities** come from fleet announcements and stay marked VERIFY until a fleet register is available. The DL51GD series is treated as a 12 m bus; if it is the 9 m DEVi, its routes are more crowded than shown.
 - **GPS coverage.** 87% of tickets with a known bus find a ping within 60 s. If missing pings also hide some service, true delivery is higher and loads lower. This is reported as a sensitivity, not applied.
+- **Unscheduled variation may read slightly high.** A bus pass the GPS misses merges two gaps into one and inflates the measured variation (`docs/CHECKS.md` §17); we report this and do not correct for it.
 - **Night hours** (00:00–05:00) have few tickets and mostly low-confidence cells.
 - **Alighting stops are as declared on the ticket.** The single all-days GTFS calendar means day-type differences come only from demand and GPS service.
 
 ## 9. Production path
 
-- **Route-level ETM totals** by route and hour, to calibrate E in time and space (requested from the organisers).
-- **DEVi automatic passenger counters** for direct validation [R17].
+- **Route-level ETM totals** by route and hour, to calibrate E in time and space (asked of the organisers, who replied on 23 Nov 2026 that route-level totals are not available yet and there is no timeline).
+- **DEVi automatic passenger counters** for direct validation [R17] (same reply: not available yet).
 - **A GTFS-Realtime occupancy feed** from the same levels [R12][R13], and a weekly rebuild.
 - **Cost:** $0 on free tiers today; one small VM at city scale.
 

@@ -28,7 +28,7 @@ We tested the ticket file before modelling it:
    - f is the mean daily digital flow on a stretch in a 30-minute slot.
    - N is the number of buses that actually run through it, from GPS (§4), not the timetable.
    - E scales digital riders to all riders: **44.6, with a range of 31.2–45.9**.
-4. **From load to a seat.** Sampling, day-to-day and bus-to-bus variation combine into a probability of getting a seat. Commuters see it as **"seats on 7 of 10 trips"**, plus a GTFS-Realtime crowding level and a confidence badge. Stretches with fewer than 5 sampled riders say "limited data" and never show a number.
+4. **From load to a seat.** Sampling, day-to-day and bus-to-bus variation (measured from GPS headways, §4) combine into a probability of getting a seat. Commuters see it as **"seats on 7 of 10 trips"**, plus a GTFS-Realtime crowding level and a confidence badge. Stretches with fewer than 5 sampled riders say "limited data" and never show a number.
 5. **Planner.** A RAPTOR router on the static GTFS returns up to 3 options, ranked by time or by a crowding-weighted time. It also gives "leave 20 minutes later → likely seat" and "board one stop earlier" suggestions, and a quiet-hour comparison.
 6. **Operators.** For each route-hour: the busiest stretch, the frequency it needs (maximum-load-point method), standee-minutes, and a ranking of where **one more bus** saves the most standing.
 
@@ -37,10 +37,13 @@ We tested the ticket file before modelling it:
 The October bus GPS feed lets us check our two weakest assumptions independently:
 
 - **Ticket time is boarding time, and the stop matching is right.** When a ticket was bought, the bus was a median of **218 m** from the boarding stop we matched, against **4.3 km** from the alighting stop.
-- **The ticket file covers DTC and cluster buses.** 99.3% of ticket passengers' buses appear in the GPS feed, which covers cluster routes too, so we expand to DTC plus cluster ridership.
+- **The ticket file covers DTC and cluster buses.** 99.3% of ticket passengers' buses appear in the GPS feed, which covers cluster routes too, so we expand to DTC plus cluster ridership. The organisers confirmed this on 23 Nov.
 - **Far fewer buses run than the timetable says.** GPS bus-km over all 31 days is **62%** of timetable bus-km on weekdays (63% Saturday, 66% Sunday), and a count of buses passing a stop agrees.
   - Counting GPS trip ids would have shown the opposite, because the feed splits journeys into fragments; we test for this.
   - N uses the observed service.
+- **Bus bunching is measured, not assumed.** The gaps between consecutive buses at two reference stops per route, net of the timetable's own irregularity, give a bus-to-bus variation of **0.62** (median), not the 0.35 we first assumed. It changes seat chances, never crowding levels.
+- **Tested as a forecast.** Crowding levels built from weeks 1–3 predict week 4 within one level on **95.0%** of 858,888 stretch-slots; two halves of the same weeks agree on 97.0%, the most that sampling noise allows.
+- **Robust to unverified inputs.** Changing bus capacity by ±15% or the expansion factor to its low or high value moves levels by at most one step; using the timetable instead of GPS-observed buses would change 40% of levels.
 - **Stop names the matcher can't settle.** Where a name fits two stops, the bus's position at purchase picks the right one.
 
 ## 5. Data used
