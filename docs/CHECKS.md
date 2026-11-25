@@ -350,7 +350,7 @@ By exact-level agreement across all published cells, the most robust scenario is
 
 ## 17. Bus-to-bus variation, measured from GPS headways
 
-The load of a bus is proportional to the gap since the bus before it (riders accumulate while they wait), so the variation of loads from bus to bus equals the variation of headways. For each route we found the buses passing two reference stops (GPS pings within 150 m) on all 14,772 route-day-type-bands, took the gaps between consecutive buses, and computed their coefficient of variation (CV) per day, stop and hour band, pooled with degrees-of-freedom weights. The timetable has irregular gaps of its own, so its CV at the same stops is removed in quadrature; what remains is the unscheduled irregularity (bunching and delay). Route-bands with few headways shrink to the network median (0.62). Seat chances now use the variation measured from GPS headways; the former assumption was 0.35.
+The load of a bus is proportional to the gap since the bus before it (riders accumulate while they wait), so if loads were proportional to gaps, the variation of loads from bus to bus would equal the variation of headways (§18 tests this with tickets and finds the relation weaker than proportional, so read the figure below as an upper bound). For each route we found the buses passing two reference stops (GPS pings within 150 m) on all 14,772 route-day-type-bands, took the gaps between consecutive buses, and computed their coefficient of variation (CV) per day, stop and hour band, pooled with degrees-of-freedom weights. The timetable has irregular gaps of its own, so its CV at the same stops is removed in quadrature; what remains is the unscheduled irregularity (bunching and delay). Route-bands with few headways shrink to the network median (0.62). Seat chances now use the variation measured from GPS headways; the former assumption was 0.35.
 
 | day type | hour band | route-bands | timetable CV | observed CV | unscheduled CV (median) | 25th pct | 75th pct |
 |---|---|---|---|---|---|---|---|
@@ -381,3 +381,26 @@ One bias runs upward. A bus whose pass the GPS misses merges two gaps into one l
 | 0.60 | 0.60 | 0.62 | 0.64 | 0.65 |
 
 Ticket matching found a GPS ping within 60 s for 87% of tickets (§11), so a few percent of passes may be missing and the measured median above probably overstates the true one by a few hundredths. We report this as a sensitivity and do not correct for it; either way the unscheduled variation is well above the 0.35 we had assumed.
+
+## 18. Do buses after a longer gap carry more riders?
+
+For each vehicle pass at a reference stop, tickets for the same vehicle and GTFS route bought within the configured time window are counted by passenger_count. Headways and ticket counts are normalized within route, stop, day type and hour band; only groups meeting the configured minimum pass count are included. Ticket time is converted from stored IST to UTC to match GPS time. Ticket rows can be reused when they fall within the window of more than one pass; `tickets used` counts distinct ticket rows.
+
+| decile | mean x | mean y | passes |
+|---|---|---|---|
+| 1 | 0.13 | 0.60 | 154,297 |
+| 2 | 0.26 | 0.74 | 154,296 |
+| 3 | 0.40 | 0.86 | 154,296 |
+| 4 | 0.56 | 0.99 | 154,296 |
+| 5 | 0.73 | 1.03 | 154,297 |
+| 6 | 0.92 | 1.09 | 154,296 |
+| 7 | 1.14 | 1.11 | 154,296 |
+| 8 | 1.41 | 1.14 | 154,296 |
+| 9 | 1.78 | 1.18 | 154,296 |
+| 10 | 2.66 | 1.26 | 154,297 |
+
+Slope of y on x through the decile means: 0.228. Passes used: 1,542,963; distinct tickets used: 320,170; ticket-pass matches: 341,053; passes with at least one ticket: 15.9%.
+
+The decile-mean slope is 0.23, so the positive association partly supports proportional loading but is not the predicted one-for-one relation.
+
+The gap is measured at one stop and some bus passes are missed, and measurement error in the horizontal variable pulls the fitted slope towards zero, so this slope is a lower bound on the true relation. Even so, loads rise less than one-for-one with the gap, so the bus-to-bus variation in §17 (the CV of headways) should be read as an upper bound on the gap-driven variation of loads, not as its value.

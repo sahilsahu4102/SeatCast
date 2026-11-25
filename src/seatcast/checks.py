@@ -536,12 +536,82 @@ def hw_cv(df, win, grp, min_m):
 
 def actual_hw(con, gps, refs, k, hol):
     observed_passes(con, gps, refs, k)
-    df = con.sql(f'''SELECT route_id, stop_id, d, h, hw FROM (
-        SELECT route_id, stop_id, ist_day(t) d, ist_hour(t) h,
+    df = con.sql(f'''SELECT route_id, stop_id, v, t, d, h, hw FROM (
+        SELECT route_id, stop_id, v, t, ist_day(t) d, ist_hour(t) h,
           t - lag(t) OVER (PARTITION BY route_id, stop_id, ist_day(t) ORDER BY t) hw
         FROM ({passq("near", k["pass_gap_s"])})) WHERE hw > 0 AND hw <= {k["hw_max_s"]}''').df()
     d = pd.to_datetime(df['d'])
     return df.assign(daytype=d.map(lambda x: daytype(x, hol)), band=df['h'].map(lambda h: band(h, k['bands'])))
+
+
+def tickets_vs_headway(con, passes, k):
+    p = passes[passes['hw'].between(k['min_hw_s'], k['max_hw_s'])].copy().reset_index(drop=True)
+    if p.empty:
+        return ticket_headway_summary(pd.DataFrame(), k)
+    p.insert(0, 'pass_id', np.arange(len(p)))
+    con.register('headway_source', p)
+    con.execute('CREATE OR REPLACE TEMP TABLE headway_passes AS SELECT * FROM headway_source')
+    win = k['ticket_window_s']
+    con.execute(f'''CREATE OR REPLACE TEMP TABLE headway_matches AS
+        SELECT p.pass_id, t.tid, t.pc
+        FROM headway_passes p
+        JOIN ticket_rows t ON t.v = p.v AND t.v IS NOT NULL AND t.v <> 'NULL'
+        JOIN ticket_routes o ON o.tid = t.tid AND o.route_id = p.route_id
+        WHERE epoch(t.ts - INTERVAL 330 MINUTE) BETWEEN p.t - {win} AND p.t + {win}''')
+    matched = con.sql('''SELECT p.pass_id, p.route_id, p.stop_id, p.daytype, p.band, p.hw,
+          count(m.tid) n_tickets, coalesce(sum(m.pc), 0) pax
+        FROM headway_passes p LEFT JOIN headway_matches m USING (pass_id)
+        GROUP BY ALL''').df()
+    r = ticket_headway_summary(matched, k)
+    ids = r.pop('_pass_ids', [])
+    if ids:
+        con.register('used_headway_passes', pd.DataFrame({'pass_id': ids}))
+        r['tickets_used'] = int(con.execute('''SELECT count(DISTINCT m.tid) FROM headway_matches m
+            JOIN used_headway_passes p USING (pass_id)''').fetchall()[0][0])
+        r['ticket_pass_matches'] = int(con.execute('''SELECT count(*) FROM headway_matches m
+            JOIN used_headway_passes p USING (pass_id)''').fetchall()[0][0])
+    return r
+
+
+def ticket_headway_summary(df, k):
+    groups = ['route_id', 'stop_id', 'daytype', 'band']
+    if df.empty:
+        return {'status': 'insufficient_data', 'passes_used': 0, 'tickets_used': 0, 'ticket_pass_matches': 0,
+                'share_passes_with_ticket': None, 'slope': None, 'deciles': [],
+                'sentence': 'There are no eligible bus passes to assess proportional loading.'}
+    keep = df.groupby(groups)['hw'].transform('size') >= k['min_passes']
+    d = df[keep].copy()
+    keep = d.groupby(groups)['pax'].transform('mean') > 0
+    d = d[keep].copy()
+    if d.empty:
+        return {'status': 'insufficient_data', 'passes_used': 0, 'tickets_used': 0, 'ticket_pass_matches': 0,
+                'share_passes_with_ticket': None, 'slope': None, 'deciles': [],
+                'sentence': 'No qualifying route-stop groups had matched tickets, so the data cannot assess proportional loading.'}
+    d['x'] = d['hw'] / d.groupby(groups)['hw'].transform('mean')
+    d['y'] = d['pax'] / d.groupby(groups)['pax'].transform('mean')
+    d['decile'] = pd.qcut(d['x'].rank(method='first'), k['deciles'], labels=False) + 1
+    bins = d.groupby('decile', as_index=False).agg(x=('x', 'mean'), y=('y', 'mean'), passes=('pass_id', 'size'))
+    x, y = bins['x'].to_numpy(), bins['y'].to_numpy()
+    den = float(((x - x.mean()) ** 2).sum())
+    slope = float(((x - x.mean()) * (y - y.mean())).sum() / den) if den else None
+    lo, hi = k['proportional_slope']
+    if slope is None:
+        finding = 'insufficient_data'
+        sentence = 'The decile means have no usable headway variation, so the data cannot test proportional loading.'
+    elif lo <= slope <= hi:
+        finding = 'supports'
+        sentence = f'The decile-mean slope is {slope:.2f}, consistent with proportional loading in this sample; this is an association check, not a causal test.'
+    elif slope > 0:
+        finding = 'partly_supports'
+        sentence = f'The decile-mean slope is {slope:.2f}, so the positive association partly supports proportional loading but is not the predicted one-for-one relation.'
+    else:
+        finding = 'does_not_support'
+        sentence = f'The decile-mean slope is {slope:.2f}, providing no support for proportional loading in this sample.'
+    return {'status': 'ok', 'finding': finding, 'passes_used': int(len(d)), 'groups_used': int(d[groups].drop_duplicates().shape[0]),
+            'tickets_used': 0, 'ticket_pass_matches': 0, '_pass_ids': d['pass_id'].tolist(),
+            'share_passes_with_ticket': float((d['n_tickets'] > 0).mean()), 'slope': slope,
+            'deciles': [{'decile': int(r.decile), 'mean_x': float(r.x), 'mean_y': float(r.y), 'passes': int(r.passes)}
+                        for r in bins.itertuples()], 'sentence': sentence}
 
 
 def sched_hw(con, g, refs, k):
@@ -587,6 +657,11 @@ def bunching():
     con.execute(f"CREATE OR REPLACE VIEW gva AS SELECT * FROM read_parquet({[(WORK / f'gps_{d}.parquet').as_posix() for d in days]})")
     act = actual_hw(con, 'gva', refs, k, hol)
     print('headways', len(act), round(time.time() - t0), 's', flush=True)
+    con.execute(f"CREATE OR REPLACE VIEW ticket_rows AS SELECT tid, v, pc, ts FROM read_parquet('{(WORK / 'tickets.parquet').as_posix()}')")
+    con.execute(f"CREATE OR REPLACE VIEW ticket_routes AS SELECT tid, route_id FROM read_parquet('{(WORK / 'od.parquet').as_posix()}')")
+    tvh = tickets_vs_headway(con, act, k['ticket_headway'])
+    merge_val('ticket_headway', tvh)
+    print('ticket headway:', tvh['passes_used'], 'passes,', tvh['tickets_used'], 'tickets, slope', tvh['slope'], flush=True)
     sch = sched_hw(con, g, refs, k)
     m = run_cv_table(act, sch, k)
     m.to_csv(WORK / 'service_cv.csv', index=False)
@@ -1098,6 +1173,7 @@ Delivered service (observed bus-km against scheduled), all days of October:
     merge_val('sensitivity', sk)
     S.append(md)
     S.append(sec_bunch(con))
+    S.append(sec_ticket_headway(cov.get('validation', {}).get('ticket_headway')))
     return '\n'.join(S)
 
 
@@ -1260,7 +1336,7 @@ def sec_bunch(con):
     used = 'the variation measured from GPS headways' if k['run_cv_from_gps'] else 'the assumed value'
     return f'''## 17. Bus-to-bus variation, measured from GPS headways
 
-The load of a bus is proportional to the gap since the bus before it (riders accumulate while they wait), so the variation of loads from bus to bus equals the variation of headways. For each route we found the buses passing two reference stops (GPS pings within {G()['stop_m']} m) on all {m['dof'].count():,} route-day-type-bands, took the gaps between consecutive buses, and computed their coefficient of variation (CV) per day, stop and hour band, pooled with degrees-of-freedom weights. The timetable has irregular gaps of its own, so its CV at the same stops is removed in quadrature; what remains is the unscheduled irregularity (bunching and delay). Route-bands with few headways shrink to the network median ({med:.2f}). Seat chances now use {used}; the former assumption was {assumed}.
+The load of a bus is proportional to the gap since the bus before it (riders accumulate while they wait), so if loads were proportional to gaps, the variation of loads from bus to bus would equal the variation of headways (§18 tests this with tickets and finds the relation weaker than proportional, so read the figure below as an upper bound). For each route we found the buses passing two reference stops (GPS pings within {G()['stop_m']} m) on all {m['dof'].count():,} route-day-type-bands, took the gaps between consecutive buses, and computed their coefficient of variation (CV) per day, stop and hour band, pooled with degrees-of-freedom weights. The timetable has irregular gaps of its own, so its CV at the same stops is removed in quadrature; what remains is the unscheduled irregularity (bunching and delay). Route-bands with few headways shrink to the network median ({med:.2f}). Seat chances now use {used}; the former assumption was {assumed}.
 
 {table(rows, [('day type', 'daytype'), ('hour band', 'band'), ('route-bands', 'n'), ('timetable CV', 'sched'), ('observed CV', 'act'), ('unscheduled CV (median)', 'run'), ('25th pct', 'q1'), ('75th pct', 'q3')], {'n': ',', 'sched': '.2f', 'act': '.2f', 'run': '.2f', 'q1': '.2f', 'q3': '.2f'})}
 
@@ -1271,6 +1347,37 @@ One bias runs upward. A bus whose pass the GPS misses merges two gaps into one l
 {table(sim, [('true CV', 'true'), ('no pass missed', 'm0'), ('5% missed', 'm5'), ('10% missed', 'm10'), ('15% missed', 'm15')], {'true': '.2f', 'm0': '.2f', 'm5': '.2f', 'm10': '.2f', 'm15': '.2f'})}
 
 Ticket matching found a GPS ping within 60 s for 87% of tickets (§11), so a few percent of passes may be missing and the measured median above probably overstates the true one by a few hundredths. We report this as a sensitivity and do not correct for it; either way the unscheduled variation is well above the {assumed} we had assumed.
+'''
+
+
+def sec_ticket_headway(r):
+    head = '## 18. Do buses after a longer gap carry more riders?'
+    if not r or r.get('status') != 'ok':
+        msg = r.get('sentence') if r else 'The ticket/headway validation has not been run.'
+        return f'''{head}
+
+{msg}
+'''
+    bins = table(r['deciles'], [('decile', 'decile'), ('mean x', 'mean_x'), ('mean y', 'mean_y'), ('passes', 'passes')],
+                 {'mean_x': '.2f', 'mean_y': '.2f', 'passes': ','})
+    slope = f"{r['slope']:.3f}" if r['slope'] is not None else 'unavailable'
+    caveat = ''
+    if r.get('finding') in ('partly_supports', 'does_not_support'):
+        caveat = ('The gap is measured at one stop and some bus passes are missed, and measurement error in the horizontal variable '
+                  'pulls the fitted slope towards zero, so this slope is a lower bound on the true relation. Even so, loads rise less than '
+                  'one-for-one with the gap, so the bus-to-bus variation in §17 (the CV of headways) should be read as an upper bound on the '
+                  'gap-driven variation of loads, not as its value.')
+    return f'''{head}
+
+For each vehicle pass at a reference stop, tickets for the same vehicle and GTFS route bought within the configured time window are counted by passenger_count. Headways and ticket counts are normalized within route, stop, day type and hour band; only groups meeting the configured minimum pass count are included. Ticket time is converted from stored IST to UTC to match GPS time. Ticket rows can be reused when they fall within the window of more than one pass; `tickets used` counts distinct ticket rows.
+
+{bins}
+
+Slope of y on x through the decile means: {slope}. Passes used: {r['passes_used']:,}; distinct tickets used: {r['tickets_used']:,}; ticket-pass matches: {r['ticket_pass_matches']:,}; passes with at least one ticket: {r['share_passes_with_ticket']:.1%}.
+
+{r['sentence']}
+
+{caveat}
 '''
 
 

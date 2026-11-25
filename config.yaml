@@ -33,6 +33,13 @@ gps:                                             # P4b ground truth (D-05)
   alias_top: 30                                  # unmatched names examined
   board_m: [300, 500]                            # distance bands reported
   bands: [0, 7, 10, 17, 20, 24]                  # hour bands for observed / scheduled delivery ratios
+  ticket_headway:                                # validation protocol from the requested check
+    min_hw_s: 60
+    max_hw_s: 3600
+    ticket_window_s: 600
+    min_passes: 30
+    deciles: 10
+    proportional_slope: [0.75, 1.25]             # ASSUMPTION: within 25% of the predicted slope of 1
   km_dt: [1, 120]                                # bus-km: seconds between consecutive pings counted
   km_step: [10, 1000]                            # bus-km: metres per step counted (drops GPS jitter and jumps)
   ratio_clamp: [0.25, 1.5]                       # ASSUMPTION: delivery ratios outside this are GPS gaps or deadheading, not service; P3 clamps
