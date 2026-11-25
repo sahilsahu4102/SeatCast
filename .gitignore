@@ -21,3 +21,6 @@ Thumbs.db
 *.egg-info/
 .ruff_cache/
 review/
+
+# staging folder made by scripts/deploy_hf.py
+.deploy-hf-*/
