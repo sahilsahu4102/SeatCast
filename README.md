@@ -9,6 +9,12 @@ Built for the **Delhi Transport Stack Hackathon 2026, Problem 2** (crowdedness-a
 
 ### ▶ [Watch the 3-minute demo video](https://youtu.be/X3lbXN2AppI)
 
+**Why this is different**
+
+- **We proved what the data is.** The ticket file is app tickets only, about 2% of riders, so we pool a month of them and scale up instead of counting passengers trip by trip.
+- **Checked against real bus GPS.** Only 62% of timetabled service actually ran, and when a ticket is bought the bus is a median 218 m from the stop we matched.
+- **Tested as a forecast.** Built from weeks 1–3, it predicts week 4's crowding within one level on 95% of stretch-slots, close to the 97% that sampling noise allows.
+
 ![Planner: Anand Vihar to Connaught Place at 18:00 on a weekday. The fastest option (473 + 85, 45 min) is crowded from the first stop, with a seat on 2 of 10 trips; the strips show crowding stop by stop](docs/img/screen-planner.png)
 
 > **Submission documents:** [Demo video](https://youtu.be/X3lbXN2AppI) · [Proposal (PDF)](docs/SeatCast_Proposal.pdf) · [Technical note (PDF)](docs/SeatCast_Technical_Note.pdf) · [Validation report](docs/CHECKS.md) · [Demo script](docs/DEMO_SCRIPT.md)
