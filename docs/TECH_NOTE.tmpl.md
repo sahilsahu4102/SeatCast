@@ -56,17 +56,11 @@ Commuters choose buses by time, but in Delhi whether you get a seat matters as m
 
 - **Bus position when the ticket was bought** (3 GPS days; {{gps.boarding.matched_share:.0%}} of tickets with a known vehicle found a ping within 60 s; median lag {{gps.boarding.lag_median_s:.0f}} s).
   - The bus was a median **{{gps.boarding.board.median_m:.0f}} m** from the matched boarding stop, against **{{gps.boarding.alight.median_m:,.0f}} m** from the matched alighting stop. {{gps.boarding.board.within_500m:.0%}} of tickets were within 500 m of the boarding stop.
-  - This confirms both that ticket time ≈ boarding time and that the stop matching is right. By matching rule:
-
-{{x.rung_table}}
-
-The rules are: a exact name, b reviewed or GPS-evidenced alias, c guarded fuzzy match, d one part of a "/" name, e the only stop containing all the words, f the same name elsewhere in the city snapped to the route.
+  - This confirms both that ticket time ≈ boarding time and that the stop matching is right, under every matching rule: the median distance stays between {{x.rung_med_lo:.0f}} and {{x.rung_med_hi:.0f}} m from exact names to the loosest rule (per-rule table in `data/out/gps_checks.json`).
 
 - **The GPS route id is the GTFS route id.** The median distance from a ping to its own route's stops is {{gps.route_check.median_m:.0f}} m, against {{gps.route_check.control_median_m:,.0f}} m for a shuffled route.
 - **Who is in the file.** {{gps.overlap.share_passengers_in_gps:.1%}} of ticket passengers with a vehicle ride a bus that appears in the GPS feed, which covers DTC and cluster routes.
-- **Fares agree with distances.** Distances along the route rise monotonically with the fare slab paid, an independent check of the stop matching (the official slab km bounds could not be verified):
-
-{{x.slab_table}}
+- **Fares agree with distances.** The median distance travelled rises with the fare slab paid: {{x.slab_nonac}} km on non-AC slabs and {{x.slab_ac}} km on AC slabs, an independent check of the stop matching (the official slab km bounds could not be verified).
 
 - **Hold-out forecast.** Levels built from weeks 1–3 alone predict week 4 within one level on **{{cov.validation.holdout.within_one:.1%}}** of {{cov.validation.holdout.n_cells:,}} cells (same level {{cov.validation.holdout.same_level:.1%}}), against {{cov.validation.holdout.ceiling_within:.1%}} / {{cov.validation.holdout.ceiling_same:.1%}} for two halves of the same weeks; high-confidence cells reach {{cov.validation.holdout.high.within_one:.1%}}, at the noise ceiling (`docs/CHECKS.md` §15). A GPS dwell-time check (stop dwell against predicted activity per bus) was too weak to use: pings every ~11 s are too coarse.
 - **Sensitivity** (`docs/CHECKS.md` §16). Changing an unverified input moves levels by at most one step: bus capacity −15% / +15% changes {{cov.validation.sensitivity.cap_minus.changed:.0%}} / {{cov.validation.sensitivity.cap_plus.changed:.0%}} of published levels, the low expansion factor {{cov.validation.sensitivity.exp_low.changed:.0%}}, the high one {{cov.validation.sensitivity.exp_high.changed:.0%}}. Using timetabled instead of GPS-observed buses would change {{cov.validation.sensitivity.timetable.changed:.0%}} of levels ({{cov.validation.sensitivity.timetable.within:.0%}} within one step), so the GPS correction is not cosmetic.
@@ -80,9 +74,7 @@ The rules are: a exact name, b reviewed or GPS-evidenced alias, c guarded fuzzy 
 
 ### A calibration we rejected, and why
 
-We tried a route-level plausibility calibration: lower E on any route whose 95th-percentile load exceeds a crush limit, and raise E on the others so the city total stays fixed. With the observed bus counts it has no solution at realistic crush limits:
-
-{{x.calib_table}}
+We tried a route-level plausibility calibration: lower E on any route whose 95th-percentile load exceeds a crush limit, and raise E on the others so the city total stays fixed. With the observed bus counts it has no solution at realistic crush limits (table in `docs/CHECKS.md` §12).
 
 Over-capacity loads are concentrated in the peaks across many routes. App users appear to be more peak-concentrated than riders overall, so a route-level correction is the wrong tool. We keep the city-wide E, preserve total ridership, and censor the extreme cells. The fix is a time-of-day calibration from route-level ticketing-machine totals (§8).
 

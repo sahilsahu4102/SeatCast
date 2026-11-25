@@ -55,32 +55,11 @@ Commuters choose buses by time, but in Delhi whether you get a seat matters as m
 
 - **Bus position when the ticket was bought** (3 GPS days; 87% of tickets with a known vehicle found a ping within 60 s; median lag 8 s).
   - The bus was a median **218 m** from the matched boarding stop, against **4,308 m** from the matched alighting stop. 81% of tickets were within 500 m of the boarding stop.
-  - This confirms both that ticket time ≈ boarding time and that the stop matching is right. By matching rule:
-
-| stop-match rule | tickets | median m | within 500 m |
-|---|---|---|---|
-| a | 65,948 | 209 | 82% |
-| b | 1,091 | 186 | 88% |
-| c | 11,351 | 219 | 80% |
-| d | 9,809 | 247 | 77% |
-| e | 4,197 | 268 | 74% |
-| f | 2,762 | 294 | 73% |
-
-The rules are: a exact name, b reviewed or GPS-evidenced alias, c guarded fuzzy match, d one part of a "/" name, e the only stop containing all the words, f the same name elsewhere in the city snapped to the route.
+  - This confirms both that ticket time ≈ boarding time and that the stop matching is right, under every matching rule: the median distance stays between 186 and 294 m from exact names to the loosest rule (per-rule table in `data/out/gps_checks.json`).
 
 - **The GPS route id is the GTFS route id.** The median distance from a ping to its own route's stops is 137 m, against 10,650 m for a shuffled route.
 - **Who is in the file.** 99.3% of ticket passengers with a vehicle ride a bus that appears in the GPS feed, which covers DTC and cluster routes.
-- **Fares agree with distances.** Distances along the route rise monotonically with the fare slab paid, an independent check of the stop matching (the official slab km bounds could not be verified):
-
-| AC | fare per passenger (Rs) | passengers | km p10 | km p50 | km p90 |
-|---|---|---|---|---|---|
-| False | 4.5 | 190,578 | 1.5 | 3.0 | 4.7 |
-| False | 9.0 | 190,509 | 4.7 | 7.4 | 10.4 |
-| False | 13.5 | 125,248 | 10.8 | 17.3 | 30.2 |
-| True | 9.0 | 832,540 | 1.6 | 3.1 | 4.7 |
-| True | 13.5 | 679,369 | 4.3 | 6.4 | 8.6 |
-| True | 18.0 | 268,902 | 7.7 | 10.0 | 12.7 |
-| True | 22.5 | 231,879 | 12.5 | 17.8 | 29.3 |
+- **Fares agree with distances.** The median distance travelled rises with the fare slab paid: 3 → 7.4 → 17.3 km on non-AC slabs and 3.1 → 6.4 → 10 → 17.8 km on AC slabs, an independent check of the stop matching (the official slab km bounds could not be verified).
 
 - **Hold-out forecast.** Levels built from weeks 1–3 alone predict week 4 within one level on **95.0%** of 858,886 cells (same level 64.9%), against 97.0% / 67.0% for two halves of the same weeks; high-confidence cells reach 97.9%, at the noise ceiling (`docs/CHECKS.md` §15). A GPS dwell-time check (stop dwell against predicted activity per bus) was too weak to use: pings every ~11 s are too coarse.
 - **Sensitivity** (`docs/CHECKS.md` §16). Changing an unverified input moves levels by at most one step: bus capacity −15% / +15% changes 18% / 15% of published levels, the low expansion factor 37%, the high one 3%. Using timetabled instead of GPS-observed buses would change 40% of levels (95% within one step), so the GPS correction is not cosmetic.
@@ -94,18 +73,7 @@ The rules are: a exact name, b reviewed or GPS-evidenced alias, c guarded fuzzy 
 
 ### A calibration we rejected, and why
 
-We tried a route-level plausibility calibration: lower E on any route whose 95th-percentile load exceeds a crush limit, and raise E on the others so the city total stays fixed. With the observed bus counts it has no solution at realistic crush limits:
-
-| quantile | crush x total | routes over cap | their riders % | carried if cut % | max carried at cap % |
-|---|---|---|---|---|---|
-| 0.9 | 1.5 | 569 | 55.2 | 82.6 | 111.1 |
-| 0.9 | 2.0 | 298 | 31.5 | 91.5 | 148.1 |
-| 0.9 | 2.5 | 164 | 17.2 | 95.3 | 185.2 |
-| 0.9 | 3.0 | 91 | 10.7 | 97.0 | 222.2 |
-| 0.95 | 1.5 | 837 | 76.0 | 69.5 | 83.3 |
-| 0.95 | 2.0 | 552 | 56.5 | 81.8 | 111.0 |
-| 0.95 | 2.5 | 355 | 38.0 | 89.1 | 138.8 |
-| 0.95 | 3.0 | 230 | 26.2 | 93.4 | 166.5 |
+We tried a route-level plausibility calibration: lower E on any route whose 95th-percentile load exceeds a crush limit, and raise E on the others so the city total stays fixed. With the observed bus counts it has no solution at realistic crush limits (table in `docs/CHECKS.md` §12).
 
 Over-capacity loads are concentrated in the peaks across many routes. App users appear to be more peak-concentrated than riders overall, so a route-level correction is the wrong tool. We keep the city-wide E, preserve total ridership, and censor the extreme cells. The fix is a time-of-day calibration from route-level ticketing-machine totals (§8).
 
