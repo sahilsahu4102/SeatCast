@@ -9,7 +9,7 @@ Built for the **Delhi Transport Stack Hackathon 2026, Problem 2** (crowdedness-a
 
 ### ▶ [Watch the 3-minute demo video](https://youtu.be/QW0uWUYJfwQ)
 
-![Planner: Anand Vihar ISBT to Connaught Place at 18:00 on a weekday. Seat likely at boarding, then crowded from Hasanpur Depot into CP; the strip shows crowding stop by stop](docs/img/screen-planner.png)
+![Planner: Anand Vihar to Connaught Place at 18:00 on a weekday. The fastest option (473 + 85, 45 min) is crowded from the first stop, with a seat on 2 of 10 trips; the strips show crowding stop by stop](docs/img/screen-planner.png)
 
 > **Submission documents:** [Demo video](https://youtu.be/QW0uWUYJfwQ) · [Proposal (PDF)](docs/SeatCast_Proposal.pdf) · [Technical note (PDF)](docs/SeatCast_Technical_Note.pdf) · [Validation report](docs/CHECKS.md) · [Demo script](docs/DEMO_SCRIPT.md)
 
